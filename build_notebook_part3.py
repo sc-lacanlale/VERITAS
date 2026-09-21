@@ -64,6 +64,7 @@ code(
     r'''
 def make_loader(samples, shuffle, augment):
     ds = FaceCropDataset(samples, GEO, augment=augment)
+    drop_last = bool(shuffle and len(samples) >= int(CONFIG["batch_size"]))
     return DataLoader(
         ds,
         batch_size=CONFIG["batch_size"],
@@ -71,7 +72,7 @@ def make_loader(samples, shuffle, augment):
         num_workers=CONFIG["num_workers"],
         pin_memory=torch.cuda.is_available(),
         collate_fn=collate_faces,
-        drop_last=False,
+        drop_last=drop_last,
     )
 
 

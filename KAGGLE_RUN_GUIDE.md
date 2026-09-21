@@ -1,9 +1,49 @@
 # VERITAS — How to run on a Kaggle Notebook
 
-There is **one** notebook: `VERITAS_Kaggle.ipynb`.  
-Do not split it into multiple notebooks. Run it **top to bottom** in a single Kaggle session.
+You can run this two ways:
+
+1. **Group (recommended):** four training notebooks in `notebooks/`, one variant each, then `VERITAS_05_compare.ipynb`.
+2. **Solo:** `VERITAS_Kaggle.ipynb` trains all four variants **one after another** in one session (much longer).
 
 This guide is the full sequence: create the session, **then** import the notebook, **then** attach the dataset, **then** set GPU/internet, **then** edit config, **then** run.
+
+---
+
+## Group workflow (four people, four GPUs)
+
+Each member creates **their own** Kaggle notebook. Do not share one session.
+
+| Member | Import this file | Trains only |
+| --- | --- | --- |
+| A | `notebooks/VERITAS_01_baseline.ipynb` | Baseline EfficientNet-B7 |
+| B | `notebooks/VERITAS_02_multistream.ipynb` | Multi-stream, no segmentation |
+| C | `notebooks/VERITAS_03_segmentation.ipynb` | Segmentation / MTL, RGB only |
+| D | `notebooks/VERITAS_04_full.ipynb` | Full VERITAS |
+
+**Before anyone clicks Run All**, agree on CONFIG. All four must match:
+
+- `run_mode`: all `"smoke"` first, later all `"full"`
+- `seed`: `42`
+- `split_protocol`: `"70_15_15"`
+- `split_pool`: `"train_val_testdev"`
+- `image_size` (smoke overwrites to 320; full uses 600)
+- `classification_threshold`: `0.5`
+
+After the Environment + CONFIG cells, each notebook prints `PROTOCOL_HASH`.  
+**Compare those four hashes in the group chat.** If they differ, stop and fix CONFIG.
+
+Then each member follows Steps 1–9 below using **their** `.ipynb`, not `VERITAS_Kaggle.ipynb`.
+
+### After all four finish
+
+1. Each member downloads `/kaggle/working` (Output panel) as a zip.
+2. One person makes a Kaggle dataset with four folders, e.g. `baseline/`, `multistream/`, `seg/`, `full/`.
+3. Create a **CPU** notebook (no GPU needed).
+4. Import `notebooks/VERITAS_05_compare.ipynb`.
+5. Attach that results dataset (and not necessarily the image dataset).
+6. Run All. It writes `experiment_results_compared.csv` and McNemar / Wilcoxon tests on paired `(image_id, face_id)` rows.
+
+Comparison is valid only if the protocol hashes and the test image IDs match.
 
 ---
 
@@ -11,11 +51,11 @@ This guide is the full sequence: create the session, **then** import the noteboo
 
 1. A Kaggle account (phone-verified if Kaggle asks you to verify before using GPUs).
 2. GPU quota remaining: [Kaggle Account settings](https://www.kaggle.com/settings) → scroll to **Accelerators** / GPU quota.
-3. The local file:
+3. The local notebook you were assigned (see the group table above), for example:
    ```text
-   VERITAS_Kaggle.ipynb
+   notebooks/VERITAS_01_baseline.ipynb
    ```
-   This lives in the `veritas-thesis` project folder.
+   Solo users import `VERITAS_Kaggle.ipynb` instead.
 4. The dataset (already public; you will attach it inside Kaggle, not upload the 100k images yourself):
    ```text
    https://www.kaggle.com/datasets/nathanielescuro/veritas-openforensics-compiled
@@ -63,10 +103,11 @@ Import **after** the GPU session exists. Importing first into a CPU notebook and
 
 1. In the notebook menu: **File → Import notebook**.
 2. Choose **Upload**.
-3. Select your local file:
+3. Select **your assigned** local file, for example:
    ```text
-   VERITAS_Kaggle.ipynb
+   notebooks/VERITAS_01_baseline.ipynb
    ```
+   (or `VERITAS_Kaggle.ipynb` if you are running all four variants yourself)
 4. Confirm. Kaggle replaces (or adds) the cells from that file.
 5. Scroll the notebook. You should see sections starting with:
 

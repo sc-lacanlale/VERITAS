@@ -783,10 +783,13 @@ class ASPP(nn.Module):
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True),
             ))
+        # GAP is N,C,1,1. BatchNorm2d in train mode requires N*H*W > 1 and
+        # crashes on the last batch when batch_size==1. GroupNorm is safe.
+        gn = 32 if out_ch % 32 == 0 else 1
         self.gap = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(in_ch, out_ch, 1, bias=False),
-            nn.BatchNorm2d(out_ch),
+            nn.GroupNorm(gn, out_ch),
             nn.ReLU(inplace=True),
         )
         self.project = nn.Sequential(
