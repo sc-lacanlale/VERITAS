@@ -1,0 +1,20 @@
+# Local data and runtime artifacts (dataset lives on Kaggle)
+dataset/
+kaggle_working/
+C:/kaggle/
+
+# Python / notebook junk
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Logs and one-off local runners
+nb_exec_log.txt
+*.pt
+face_metadata.json
+
+# OS
+Thumbs.db
+.DS_Store
