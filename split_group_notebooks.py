@@ -74,8 +74,15 @@ Do **not** change these if you want a valid comparison:
 - `classification_threshold`
 - `face_margin`
 - `max_train_images` / `max_val_images` / `max_test_images`
+- `epochs`, `batch_size`, `learning_rate`
 
 `experiments_to_run` is already locked to `["{exp}"]`.
+
+## Kaggle 12-hour limit
+
+Training stops at `time_budget_hours` (11 h) so the test evaluation still runs and predictions are saved.
+To continue in a new session: download `/kaggle/working/checkpoints/{exp}_last.pt` and `{exp}_best.pt`,
+upload them as a Kaggle dataset, attach it, and Run All again. The notebook copies them in and resumes.
 
 Dataset: attach `nathanielescuro/veritas-openforensics-compiled`. Follow `KAGGLE_RUN_GUIDE.md`.
 """
@@ -94,6 +101,7 @@ import hashlib, json as _json
 _protocol = {k: CONFIG[k] for k in [
     "run_mode", "seed", "image_size", "face_margin", "classification_threshold",
     "split_protocol", "split_pool", "max_train_images", "max_val_images", "max_test_images",
+    "epochs", "batch_size", "learning_rate",
 ]}
 _blob = _json.dumps(_protocol, sort_keys=True, default=str)
 PROTOCOL_HASH = hashlib.sha256(_blob.encode()).hexdigest()[:16]
@@ -317,6 +325,12 @@ for exp in EXPECTED:
     if mf is not None:
         blob = json.loads(Path(mf).read_text(encoding="utf-8"))
         compute = blob.get("compute", {})
+        rec["epochs_completed"] = blob.get("epochs_completed")
+        rec["epochs_target"] = blob.get("epochs_target")
+        if rec["epochs_completed"] is not None and rec["epochs_target"] is not None \
+                and rec["epochs_completed"] < rec["epochs_target"]:
+            print(f"WARNING: {exp} finished only {rec['epochs_completed']}/{rec['epochs_target']} epochs. "
+                  "Resume it before using these numbers in the thesis.")
         rec["mean_latency_ms"] = compute.get("mean_latency_ms_per_face")
         rec["peak_vram_mb"] = compute.get("peak_vram_mb")
         rec["input_resolution"] = compute.get("input_resolution")

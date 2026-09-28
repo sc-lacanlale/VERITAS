@@ -198,28 +198,33 @@ Then confirm / set:
 "image_size": 600,          # EfficientNet-B7 native size
 "batch_size": 4,            # drop to 2 or 1 if you OOM
 "gradient_accumulation": 1, # raise to 4 if batch_size is 1
-"epochs": 8,
+"epochs": 3,                # same value for all four group notebooks
 "split_protocol": "70_15_15",
 "split_pool": "train_val_testdev",
 "skip_training": False,
 "resume": True,
-"experiments_to_run": [
-    "baseline_effb7",
-    "multistream_no_seg",
-    "seg_no_multistream",
-    "full_veritas",
-],
+"time_budget_hours": 11.0,  # training stops here so test eval finishes before Kaggle's 12h cutoff
+"resume_from_input": True,
+"multi_gpu": True,          # uses both GPUs on "GPU T4 x2"
 "run_loss_sweeps": False,   # turn True only after the four variants finish
 ```
 
-If 8 hours is not enough for all four EfficientNet-B7 models, run **one variant per session**:
+### 5C. The 12-hour limit and resuming (important for full runs)
 
-```python
-"experiments_to_run": ["baseline_effb7"],
-```
+One Full VERITAS epoch at 600px took ~7 hours on a single T4. Three epochs do not fit in one 12-hour Kaggle run, so training is split across runs:
 
-Next session use `multistream_no_seg`, then `seg_no_multistream`, then `full_veritas`.  
-Keep `"resume": True` so existing files in `/kaggle/working/checkpoints/` are reused.
+1. Each run trains until `time_budget_hours` (11 h), then evaluates the best checkpoint on the test set and saves predictions. You always get results, even from a partial run.
+2. When a run ends with `stopped_for_time = True` / `epochs_completed < 3` in `experiment_results.csv`, download from its **Output** tab:
+   ```text
+   checkpoints/<experiment>_last.pt
+   checkpoints/<experiment>_best.pt
+   ```
+3. Upload both files as a **private Kaggle dataset** (e.g. `veritas-full-ckpt`). For later runs, use **New Version** on that same dataset.
+4. Attach it to the notebook with **Add Input**, next to the OpenForensics dataset.
+5. **Save & Run All** again. The notebook copies the checkpoints into `/kaggle/working`, prints `Resumed ... epoch N`, and continues from the next epoch with the same learning-rate schedule as an uninterrupted run.
+6. Repeat until `epochs_completed = 3`. Only that final run's predictions go into the comparison notebook.
+
+Each account has roughly 30 GPU-hours per week (check [Kaggle settings](https://www.kaggle.com/settings)). Three epochs fit that; eight do not.
 
 Optional official OpenForensics split instead of SOP 70/15/15:
 

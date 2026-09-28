@@ -52,6 +52,9 @@ md("## 1. Environment")
 
 code(
     r"""
+import time
+NOTEBOOK_START_TIME = time.time()  # the training time budget is measured from here
+
 import os
 import sys
 import platform
@@ -319,7 +322,9 @@ CONFIG: Dict[str, Any] = {
     "face_margin": 0.10,
     "batch_size": 4,
     "num_workers": 2 if os.name != "nt" else 0,
-    "epochs": 8,
+    # 3 epochs: one Full VERITAS epoch at 600px is ~7h on a single T4, and each Kaggle
+    # account has ~30 GPU-hours/week. All four group notebooks must use the same value.
+    "epochs": 3,
     "learning_rate": 1e-4,
     "weight_decay": 1e-4,
     "classification_threshold": 0.5,
@@ -335,8 +340,14 @@ CONFIG: Dict[str, Any] = {
     "max_train_images": None,
     "max_val_images": None,
     "max_test_images": None,
-    "skip_training": False,
+    "skip_training": False,  # True = evaluate an existing checkpoint without training
     "resume": True,
+    # Kaggle kills committed runs at 12h. Training stops at this budget so the test
+    # evaluation and prediction export still finish inside the same run.
+    "time_budget_hours": 11.0,
+    # Resume across sessions: attach a dataset containing <exp>_last.pt / <exp>_best.pt.
+    "resume_from_input": True,
+    "multi_gpu": True,  # use both GPUs on Kaggle "GPU T4 x2"
     "experiments_to_run": [
         "baseline_effb7",
         "multistream_no_seg",

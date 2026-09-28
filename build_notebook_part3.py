@@ -384,13 +384,14 @@ def evaluate_loader(model, loader, criterion, split_name: str):
     return metrics, recs
 
 
-def save_checkpoint(path, model, optimizer, scheduler, epoch, best_metric, exp_name, exp_cfg, loss_cfg):
+def save_checkpoint(path, model, optimizer, scheduler, epoch, best_metric, exp_name, exp_cfg, loss_cfg,
+                    history=None, epoch_seconds=None):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
             "epoch": epoch,
-            "model_state_dict": model.state_dict(),
+            "model_state_dict": unwrap_model(model).state_dict(),
             "optimizer_state_dict": optimizer.state_dict() if optimizer is not None else None,
             "scheduler_state_dict": scheduler.state_dict() if scheduler is not None else None,
             "best_metric": best_metric,
@@ -398,20 +399,58 @@ def save_checkpoint(path, model, optimizer, scheduler, epoch, best_metric, exp_n
             "experiment_config": exp_cfg,
             "training_config": {k: v for k, v in CONFIG.items() if k != "loss_configs"},
             "loss_config": loss_cfg,
+            "history": history or [],
+            "epoch_seconds": epoch_seconds or [],
         },
         path,
     )
 
 
+def _torch_load(path):
+    try:
+        return torch.load(path, map_location=DEVICE, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=DEVICE)
+
+
+def stage_checkpoints_from_input(exp_name):
+    """Copy <exp>_last.pt / <exp>_best.pt from an attached Kaggle dataset into /kaggle/working.
+
+    /kaggle/working starts empty in every new session, so resuming across sessions
+    requires uploading the previous run's checkpoints as a dataset and attaching it.
+    """
+    if not CONFIG.get("resume_from_input", True):
+        return
+    ckpt_dir = PATHS["working"] / "checkpoints"
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    wanted = {f"{exp_name}_last.pt", f"{exp_name}_best.pt"}
+    if all((ckpt_dir / name).exists() for name in wanted):
+        return
+    input_root = Path("/kaggle/input")
+    if not input_root.exists():
+        return
+    found = {}
+    for dirpath, dirnames, filenames in os.walk(input_root):
+        dirnames[:] = [d for d in dirnames if d != "Images"]
+        for fn in filenames:
+            if fn in wanted and fn not in found:
+                found[fn] = Path(dirpath) / fn
+    for fn, src in found.items():
+        dst = ckpt_dir / fn
+        if not dst.exists():
+            shutil.copy2(src, dst)
+            print("Staged checkpoint from input:", src, "->", dst)
+    if not found:
+        print(f"No {exp_name} checkpoints found in /kaggle/input; training starts from ImageNet weights.")
+
+
 def load_checkpoint_if_any(path, model, optimizer=None, scheduler=None):
+    """Returns (epoch, best_metric, ckpt_dict_or_None)."""
     path = Path(path)
     if not CONFIG["resume"] or not path.exists():
-        return 0, None
-    try:
-        ckpt = torch.load(path, map_location=DEVICE, weights_only=False)
-    except TypeError:
-        ckpt = torch.load(path, map_location=DEVICE)
-    model.load_state_dict(ckpt["model_state_dict"], strict=False)
+        return 0, None, None
+    ckpt = _torch_load(path)
+    unwrap_model(model).load_state_dict(ckpt["model_state_dict"], strict=False)
     if optimizer is not None and ckpt.get("optimizer_state_dict"):
         try:
             optimizer.load_state_dict(ckpt["optimizer_state_dict"])
@@ -423,7 +462,7 @@ def load_checkpoint_if_any(path, model, optimizer=None, scheduler=None):
         except Exception:
             pass
     print("Resumed", path, "epoch", ckpt.get("epoch"))
-    return int(ckpt.get("epoch", 0)), ckpt.get("best_metric")
+    return int(ckpt.get("epoch", 0)), ckpt.get("best_metric"), ckpt
 
 
 def measure_compute(model, loader, n_warmup=None, n_repeat=None):
@@ -476,9 +515,29 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
         segmentation=exp_cfg["segmentation"],
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG["learning_rate"], weight_decay=CONFIG["weight_decay"])
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(CONFIG["epochs"], 1))
+    # Closed-form cosine (same values as CosineAnnealingLR, eta_min=0). The schedule is
+    # recomputed from CONFIG["epochs"] on resume instead of restoring scheduler state, so a
+    # run resumed across Kaggle sessions follows exactly the schedule of an uninterrupted run.
+    total_epochs = max(int(CONFIG["epochs"]), 1)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lambda e: 0.5 * (1.0 + math.cos(math.pi * min(e, total_epochs) / total_epochs))
+    )
+    stage_checkpoints_from_input(exp_name)
     ckpt_best = PATHS["working"] / "checkpoints" / f"{exp_name}_best.pt"
-    start_epoch, best_metric = load_checkpoint_if_any(ckpt_best, model, optimizer, scheduler)
+    ckpt_last = PATHS["working"] / "checkpoints" / f"{exp_name}_last.pt"
+    resume_path = ckpt_last if ckpt_last.exists() else ckpt_best
+    start_epoch, best_metric, resumed = load_checkpoint_if_any(resume_path, model, optimizer)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # "scheduler.step() before optimizer.step()" is expected here
+        for _ in range(start_epoch):
+            scheduler.step()
+    history = list((resumed or {}).get("history", []))
+    epoch_seconds = list((resumed or {}).get("epoch_seconds", []))
+    # A last.pt written by older notebook versions stored a stale best_metric; trust best.pt.
+    if resume_path == ckpt_last and ckpt_best.exists() and CONFIG["resume"]:
+        best_from_file = _torch_load(ckpt_best).get("best_metric")
+        if best_from_file is not None:
+            best_metric = max(float(best_metric if best_metric is not None else -1.0), float(best_from_file))
     best_metric = -1.0 if best_metric is None else float(best_metric)
     scaler_enabled = bool(CONFIG["use_amp"] and DEVICE.type == "cuda")
     try:
@@ -487,19 +546,46 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
     except Exception:
         scaler = torch.cuda.amp.GradScaler(enabled=scaler_enabled)
         autocast_ctx = lambda: torch.cuda.amp.autocast(enabled=scaler_enabled)
-    history = []
+    train_info = {
+        "history": history,
+        "best_metric": best_metric,
+        "loss_config": loss_cfg,
+        "epochs_completed": start_epoch,
+        "epochs_target": CONFIG["epochs"],
+        "stopped_for_time": False,
+    }
     if CONFIG["skip_training"]:
-        print("skip_training=True")
-        return model, {"history": history, "best_metric": best_metric}
+        print("skip_training=True: evaluating the loaded checkpoint without training")
+        if ckpt_best.exists():
+            load_checkpoint_if_any(ckpt_best, model)
+        return model, train_info
+
+    budget_s = float(CONFIG.get("time_budget_hours") or 1e9) * 3600.0
+    t0_nb = globals().get("NOTEBOOK_START_TIME", time.time())
+    elapsed = lambda: time.time() - t0_nb
 
     accum = max(int(CONFIG["gradient_accumulation"]), 1)
     for epoch in range(start_epoch, CONFIG["epochs"]):
+        if epoch_seconds:
+            est = float(np.median(epoch_seconds))
+            if elapsed() + est > budget_s:
+                print(
+                    f"Time budget: {elapsed()/3600:.2f}h used, next epoch needs ~{est/3600:.2f}h, "
+                    f"budget {budget_s/3600:.2f}h. Stopping training; evaluating best checkpoint."
+                )
+                train_info["stopped_for_time"] = True
+                break
+        t_epoch = time.time()
+        stopped_mid_epoch = False
         model.train()
         running = 0.0
         seen = 0
         optimizer.zero_grad(set_to_none=True)
         pbar = tqdm(train_loader, desc=f"{exp_name} ep{epoch+1}/{CONFIG['epochs']}")
         for step, batch in enumerate(pbar):
+            if elapsed() > budget_s:
+                stopped_mid_epoch = True
+                break
             images = batch["image"].to(DEVICE, non_blocking=True)
             labels = batch["label"].to(DEVICE, non_blocking=True)
             masks = batch["mask"].to(DEVICE, non_blocking=True)
@@ -521,6 +607,13 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
                 seg=f"{float(losses['segmentation']):.4f}",
             )
             del images, labels, masks, outputs, loss
+        if stopped_mid_epoch:
+            print(
+                f"Time budget of {budget_s/3600:.2f}h reached during epoch {epoch+1}. "
+                "Discarding the partial epoch; the last completed epoch stays in *_last.pt."
+            )
+            train_info["stopped_for_time"] = True
+            break
         scheduler.step()
         train_loss = running / max(seen, 1)
         val_metrics, _ = evaluate_loader(model, val_loader, criterion, "val")
@@ -534,19 +627,26 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
             "lambda_seg": loss_cfg["lambda_seg"] if exp_cfg["segmentation"] else 0.0,
             "val_miou_fake": val_metrics.get("miou"),
         }
+        epoch_seconds.append(time.time() - t_epoch)
+        row["epoch_seconds"] = epoch_seconds[-1]
         history.append(row)
         print(row)
         with open(PATHS["working"] / "logs" / f"{exp_name}_history.json", "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2)
-        save_checkpoint(PATHS["working"] / "checkpoints" / f"{exp_name}_last.pt", model, optimizer, scheduler, epoch + 1, best_metric, exp_name, exp_cfg, loss_cfg)
-        if val_metrics["f1"] >= best_metric:
+        is_best = val_metrics["f1"] >= best_metric
+        if is_best:
             best_metric = val_metrics["f1"]
-            save_checkpoint(ckpt_best, model, optimizer, scheduler, epoch + 1, best_metric, exp_name, exp_cfg, loss_cfg)
+        save_checkpoint(ckpt_last, model, optimizer, scheduler, epoch + 1, best_metric, exp_name, exp_cfg, loss_cfg,
+                        history=history, epoch_seconds=epoch_seconds)
+        if is_best:
+            save_checkpoint(ckpt_best, model, optimizer, scheduler, epoch + 1, best_metric, exp_name, exp_cfg, loss_cfg,
+                            history=history, epoch_seconds=epoch_seconds)
             print("  saved best", ckpt_best, "F1", best_metric)
-    # reload best
+        train_info["epochs_completed"] = epoch + 1
+    train_info["best_metric"] = best_metric
     if ckpt_best.exists():
         load_checkpoint_if_any(ckpt_best, model)
-    return model, {"history": history, "best_metric": best_metric, "loss_config": loss_cfg}
+    return model, train_info
 '''
 )
 
@@ -1090,14 +1190,28 @@ def run_all_experiments():
                 "batch_size": compute["batch_size"],
                 "input_resolution": compute["input_resolution"],
                 "device": compute["device"],
-                "status": "ok",
+                "epochs_completed": train_info.get("epochs_completed"),
+                "epochs_target": train_info.get("epochs_target"),
+                "stopped_for_time": train_info.get("stopped_for_time"),
+                "status": "ok" if train_info.get("epochs_completed", 0) > 0 else "untrained",
             }
             all_test_records[exp_name] = test_recs
             models[exp_name] = model
             GLOBAL_MODEL = model
             summary_rows.append(row)
             with open(PATHS["working"] / "logs" / f"{exp_name}_test_metrics.json", "w", encoding="utf-8") as f:
-                json.dump({"metrics": test_metrics, "compute": compute, "config": exp_cfg}, f, indent=2)
+                json.dump(
+                    {
+                        "metrics": test_metrics,
+                        "compute": compute,
+                        "config": exp_cfg,
+                        "epochs_completed": train_info.get("epochs_completed"),
+                        "epochs_target": train_info.get("epochs_target"),
+                        "stopped_for_time": train_info.get("stopped_for_time"),
+                    },
+                    f,
+                    indent=2,
+                )
         except Exception:
             traceback.print_exc()
             summary_rows.append(

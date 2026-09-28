@@ -939,7 +939,24 @@ def build_model(exp_cfg: Dict[str, Any]) -> VERITASModel:
             print(f"Adapted DeepLabV3+ head to low_ch={low_ch} high_ch={high_ch}")
         if was_training:
             m.train()
+    if CONFIG.get("multi_gpu", True) and torch.cuda.device_count() > 1:
+        m = _DataParallel(m)
+        print(f"Using nn.DataParallel across {torch.cuda.device_count()} GPUs")
     return m
+
+
+class _DataParallel(nn.DataParallel):
+    """DataParallel that still exposes VERITASModel attributes (e.g. .segmentation)."""
+
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
+
+
+def unwrap_model(m):
+    return m.module if isinstance(m, nn.DataParallel) else m
 
 
 print("Model factory ready. Variants:")
