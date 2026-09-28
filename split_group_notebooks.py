@@ -101,7 +101,7 @@ import hashlib, json as _json
 _protocol = {k: CONFIG[k] for k in [
     "run_mode", "seed", "image_size", "face_margin", "classification_threshold",
     "split_protocol", "split_pool", "max_train_images", "max_val_images", "max_test_images",
-    "epochs", "batch_size", "learning_rate",
+    "epochs", "batch_size", "learning_rate", "multi_gpu",
 ]}
 _blob = _json.dumps(_protocol, sort_keys=True, default=str)
 PROTOCOL_HASH = hashlib.sha256(_blob.encode()).hexdigest()[:16]

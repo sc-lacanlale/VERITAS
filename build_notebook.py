@@ -347,7 +347,10 @@ CONFIG: Dict[str, Any] = {
     "time_budget_hours": 11.0,
     # Resume across sessions: attach a dataset containing <exp>_last.pt / <exp>_best.pt.
     "resume_from_input": True,
-    "multi_gpu": True,  # use both GPUs on Kaggle "GPU T4 x2"
+    # Single GPU on purpose. nn.DataParallel on "GPU T4 x2" ran out of host RAM after ~5h,
+    # and it splits each batch across GPUs, so BatchNorm would see 2 faces instead of 4.
+    "multi_gpu": False,
+    "mem_log_every_steps": 2000,  # RAM/GPU snapshot in the log and logs/memory.log
     "experiments_to_run": [
         "baseline_effb7",
         "multistream_no_seg",

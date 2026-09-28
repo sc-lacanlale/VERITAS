@@ -407,10 +407,42 @@ def save_checkpoint(path, model, optimizer, scheduler, epoch, best_metric, exp_n
 
 
 def _torch_load(path):
+    # CPU first: load_state_dict copies weights and optimizer state onto the GPU itself,
+    # so mapping to CUDA here would only hold a second ~800 MB copy on GPU 0.
     try:
-        return torch.load(path, map_location=DEVICE, weights_only=False)
+        return torch.load(path, map_location="cpu", weights_only=False)
     except TypeError:
-        return torch.load(path, map_location=DEVICE)
+        return torch.load(path, map_location="cpu")
+
+
+def memory_report(tag=""):
+    """One-line host RAM / GPU memory snapshot, also appended to logs/memory.log."""
+    parts = [tag]
+    try:
+        import psutil
+        proc = psutil.Process()
+        rss = proc.memory_info().rss
+        for child in proc.children(recursive=True):
+            try:
+                rss += child.memory_info().rss
+            except Exception:
+                pass
+        vm = psutil.virtual_memory()
+        parts.append(f"RAM process+workers={rss / 2**30:.2f}GB system_used={vm.percent:.0f}% "
+                     f"available={vm.available / 2**30:.2f}GB")
+    except Exception as e:
+        parts.append(f"RAM n/a ({e})")
+    if torch.cuda.is_available():
+        parts.append(f"GPU0 alloc={torch.cuda.memory_allocated(0) / 2**30:.2f}GB "
+                     f"reserved={torch.cuda.memory_reserved(0) / 2**30:.2f}GB")
+    line = " | ".join(p for p in parts if p)
+    print(line)
+    try:
+        with open(PATHS["working"] / "logs" / "memory.log", "a", encoding="utf-8") as f:
+            f.write(time.strftime("%H:%M:%S ") + line + "\n")
+    except Exception:
+        pass
+    return line
 
 
 def stage_checkpoints_from_input(exp_name):
@@ -533,12 +565,19 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
             scheduler.step()
     history = list((resumed or {}).get("history", []))
     epoch_seconds = list((resumed or {}).get("epoch_seconds", []))
+    del resumed
     # A last.pt written by older notebook versions stored a stale best_metric; trust best.pt.
     if resume_path == ckpt_last and ckpt_best.exists() and CONFIG["resume"]:
-        best_from_file = _torch_load(ckpt_best).get("best_metric")
+        best_ckpt = _torch_load(ckpt_best)
+        best_from_file = best_ckpt.get("best_metric")
+        del best_ckpt
         if best_from_file is not None:
             best_metric = max(float(best_metric if best_metric is not None else -1.0), float(best_from_file))
     best_metric = -1.0 if best_metric is None else float(best_metric)
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    memory_report(f"[{exp_name}] after model/checkpoint load")
     scaler_enabled = bool(CONFIG["use_amp"] and DEVICE.type == "cuda")
     try:
         scaler = torch.amp.GradScaler("cuda", enabled=scaler_enabled)
@@ -581,11 +620,16 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
         running = 0.0
         seen = 0
         optimizer.zero_grad(set_to_none=True)
-        pbar = tqdm(train_loader, desc=f"{exp_name} ep{epoch+1}/{CONFIG['epochs']}")
+        memory_report(f"[{exp_name}] epoch {epoch+1} start")
+        mem_every = int(CONFIG.get("mem_log_every_steps", 2000))
+        # mininterval keeps the saved output of a 10h committed run small.
+        pbar = tqdm(train_loader, desc=f"{exp_name} ep{epoch+1}/{CONFIG['epochs']}", mininterval=60)
         for step, batch in enumerate(pbar):
             if elapsed() > budget_s:
                 stopped_mid_epoch = True
                 break
+            if mem_every > 0 and step > 0 and step % mem_every == 0:
+                memory_report(f"[{exp_name}] epoch {epoch+1} step {step}/{len(train_loader)}")
             images = batch["image"].to(DEVICE, non_blocking=True)
             labels = batch["label"].to(DEVICE, non_blocking=True)
             masks = batch["mask"].to(DEVICE, non_blocking=True)
@@ -616,7 +660,9 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
             break
         scheduler.step()
         train_loss = running / max(seen, 1)
+        memory_report(f"[{exp_name}] epoch {epoch+1} train done, starting validation")
         val_metrics, _ = evaluate_loader(model, val_loader, criterion, "val")
+        memory_report(f"[{exp_name}] epoch {epoch+1} validation done")
         row = {
             "epoch": epoch + 1,
             "train_loss": train_loss,

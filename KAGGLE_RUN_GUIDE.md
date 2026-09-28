@@ -205,7 +205,7 @@ Then confirm / set:
 "resume": True,
 "time_budget_hours": 11.0,  # training stops here so test eval finishes before Kaggle's 12h cutoff
 "resume_from_input": True,
-"multi_gpu": True,          # uses both GPUs on "GPU T4 x2"
+"multi_gpu": False,         # keep False: 2-GPU mode ran out of RAM and changes BatchNorm batch size
 "run_loss_sweeps": False,   # turn True only after the four variants finish
 ```
 

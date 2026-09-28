@@ -14,6 +14,10 @@ venv/
 nb_exec_log.txt
 *.pt
 face_metadata.json
+# checkpoint archives that were unzipped on download
+finished_notebooks/*_best/
+finished_notebooks/*_last/
+finished_notebooks/checkpoints/
 
 # OS
 Thumbs.db
