@@ -1,0 +1,11 @@
+torch>=2.0
+torchvision>=0.15
+fastapi
+uvicorn[standard]
+python-multipart
+Pillow
+opencv-python-headless
+numpy
+mediapipe
+pytest
+httpx

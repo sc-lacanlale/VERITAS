@@ -12,6 +12,8 @@ This repository is the **current** implementation: a single Kaggle notebook that
 1. Attach dataset: [nathanielescuro/veritas-openforensics-compiled](https://www.kaggle.com/datasets/nathanielescuro/veritas-openforensics-compiled)
 2. Follow **`KAGGLE_RUN_GUIDE.md`** (when to import, attach data, edit `CONFIG`, then run).
 
+**Inference app** (upload one image → per-face real/fake + masks): see `veritas-app/README.md`. Checkpoint goes in `models/`.
+
 Default `run_mode` is `"smoke"` (tiny subset). Set `"full"` only after smoke succeeds on GPU. All four members must use the same `run_mode` and `PROTOCOL_HASH`.
 
 ## What is in this repo

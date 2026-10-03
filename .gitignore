@@ -22,6 +22,18 @@ finished_notebooks/*.md
 finished_notebooks/*.txt
 finished_notebooks/*.ipynb
 
+# Trained weights (too large for git; keep locally)
+models/*.zip
+models/*.pt
+models/*.tflite
+
+# Inference app
+veritas-app/frontend/node_modules/
+veritas-app/frontend/.next/
+veritas-app/backend/.venv/
+veritas-app/backend/__pycache__/
+veritas-app/backend/**/__pycache__/
+
 # OS
 Thumbs.db
 .DS_Store
