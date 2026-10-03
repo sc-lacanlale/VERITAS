@@ -351,6 +351,12 @@ CONFIG: Dict[str, Any] = {
     # and it splits each batch across GPUs, so BatchNorm would see 2 faces instead of 4.
     "multi_gpu": False,
     "mem_log_every_steps": 2000,  # RAM/GPU snapshot in the log and logs/memory.log
+    # None = train until `epochs` (or the time budget). 1 = finish one more epoch, then stop.
+    "epochs_per_run": None,
+    # Save a resumable mid-epoch checkpoint to *_last.pt this often. None = only at epoch end.
+    "mid_epoch_checkpoint_minutes": None,
+    # "always" = test eval every run; "final" = only once all `epochs` are completed.
+    "test_eval_when": "always",
     "experiments_to_run": [
         "baseline_effb7",
         "multistream_no_seg",

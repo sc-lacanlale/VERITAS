@@ -16,26 +16,55 @@ VARIANTS = [
         "exp": "baseline_effb7",
         "title": "Notebook 1 of 4 — Baseline EfficientNet-B7",
         "who": "Member A",
+        "per_epoch": True,
     },
     {
         "file": "VERITAS_02_multistream.ipynb",
         "exp": "multistream_no_seg",
         "title": "Notebook 2 of 4 — Multi-stream classification (no segmentation)",
         "who": "Member B",
+        "per_epoch": True,
     },
     {
         "file": "VERITAS_03_segmentation.ipynb",
         "exp": "seg_no_multistream",
         "title": "Notebook 3 of 4 — Segmentation / MTL (single RGB stream)",
         "who": "Member C",
+        "per_epoch": True,
     },
     {
         "file": "VERITAS_04_full.ipynb",
         "exp": "full_veritas",
         "title": "Notebook 4 of 4 — Full VERITAS",
         "who": "Member D",
+        "per_epoch": True,
     },
 ]
+
+PER_EPOCH_CONFIG = [
+    ('"epochs_per_run": None,', '"epochs_per_run": 1,  # one epoch per Kaggle run'),
+    ('"mid_epoch_checkpoint_minutes": None,', '"mid_epoch_checkpoint_minutes": 30,'),
+    ('"test_eval_when": "always",', '"test_eval_when": "final",'),
+]
+
+PER_EPOCH_MD = """
+## One epoch per run
+
+Each Save & Run All trains **one** more epoch, saves it, and stops. The test evaluation only runs in
+the run that completes the last epoch (`epochs`). Progress is saved every 30 minutes inside the epoch,
+so a crash or the 11 h budget only loses the last 30 minutes.
+
+The first printed block of the training cell says where you are, e.g.
+`START OF RUN | {exp}: 1/3 epochs completed` and `This run trains epoch 2 to epoch 2`.
+The last block says `END OF RUN ... 2/3 epochs completed`. If a new run prints the **same**
+completed count as the previous one ended with, you attached the wrong (older) checkpoint.
+
+Between runs:
+1. Open the finished version, **Output** tab, and check `logs/{exp}_training_progress.json`.
+2. In the editor: **Add Input → Your Work → Notebooks**, pick this notebook, choose the **latest version**
+   (remove the older version input if one is attached).
+3. Save & Run All. When several checkpoints are attached, the notebook picks the one with the most epochs.
+"""
 
 
 def join_src(cell) -> str:
@@ -51,9 +80,14 @@ def set_src(cell, text: str) -> None:
         pass
 
 
-def patch_training_nb(nb, exp: str, title: str, who: str):
+def patch_training_nb(nb, exp: str, title: str, who: str, per_epoch: bool = False):
     for cell in nb.cells:
         src = join_src(cell)
+        if per_epoch and cell.cell_type == "code" and '"epochs_per_run": None,' in src:
+            for old, new in PER_EPOCH_CONFIG:
+                assert old in src, old
+                src = src.replace(old, new)
+            cell["source"] = src
         if cell.cell_type == "markdown" and src.startswith("# VERITAS"):
             extra = f"""
 # VERITAS — {title}
@@ -86,6 +120,8 @@ upload them as a Kaggle dataset, attach it, and Run All again. The notebook copi
 
 Dataset: attach `nathanielescuro/veritas-openforensics-compiled`. Follow `KAGGLE_RUN_GUIDE.md`.
 """
+            if per_epoch:
+                extra += PER_EPOCH_MD.replace("{exp}", exp)
             cell["source"] = extra.strip() + "\n"
         if cell.cell_type == "code" and '"experiments_to_run": [' in src:
             src = src.replace(
@@ -437,7 +473,7 @@ def main():
             if cell.cell_type == "code":
                 cell["outputs"] = []
                 cell["execution_count"] = None
-        patch_training_nb(nb, v["exp"], v["title"], v["who"])
+        patch_training_nb(nb, v["exp"], v["title"], v["who"], per_epoch=v.get("per_epoch", False))
         dest = OUT_DIR / v["file"]
         nbf.write(nb, dest)
         print("wrote", dest, "exp", v["exp"])

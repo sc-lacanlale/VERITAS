@@ -62,13 +62,39 @@ md("## 18. DataLoaders")
 
 code(
     r'''
+class EpochSeededSampler(torch.utils.data.Sampler):
+    """Shuffle order fixed by (seed, epoch), so a run resumed mid-epoch skips exactly the
+    samples already trained on instead of drawing a fresh random order."""
+
+    def __init__(self, n, seed):
+        self.n = int(n)
+        self.seed = int(seed)
+        self.epoch = 0
+        self.start_index = 0
+
+    def set_epoch(self, epoch, start_index=0):
+        self.epoch = int(epoch)
+        self.start_index = int(start_index)
+
+    def __iter__(self):
+        g = torch.Generator()
+        g.manual_seed(self.seed * 1000 + self.epoch)
+        order = torch.randperm(self.n, generator=g).tolist()
+        return iter(order[self.start_index:])
+
+    def __len__(self):
+        return max(self.n - self.start_index, 0)
+
+
 def make_loader(samples, shuffle, augment):
     ds = FaceCropDataset(samples, GEO, augment=augment)
     drop_last = bool(shuffle and len(samples) >= int(CONFIG["batch_size"]))
+    sampler = EpochSeededSampler(len(ds), CONFIG["seed"]) if shuffle else None
     return DataLoader(
         ds,
         batch_size=CONFIG["batch_size"],
-        shuffle=shuffle,
+        sampler=sampler,
+        shuffle=False,
         num_workers=CONFIG["num_workers"],
         pin_memory=torch.cuda.is_available(),
         collate_fn=collate_faces,
@@ -385,12 +411,17 @@ def evaluate_loader(model, loader, criterion, split_name: str):
 
 
 def save_checkpoint(path, model, optimizer, scheduler, epoch, best_metric, exp_name, exp_cfg, loss_cfg,
-                    history=None, epoch_seconds=None):
+                    history=None, epoch_seconds=None, partial=None, scaler=None):
+    # `epoch` always counts COMPLETED epochs. `partial` describes an unfinished epoch
+    # ({"epoch": index, "step": next_step, ...}) whose weights are what this file holds.
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
     torch.save(
         {
             "epoch": epoch,
+            "partial": partial,
+            "scaler_state_dict": scaler.state_dict() if scaler is not None else None,
             "model_state_dict": unwrap_model(model).state_dict(),
             "optimizer_state_dict": optimizer.state_dict() if optimizer is not None else None,
             "scheduler_state_dict": scheduler.state_dict() if scheduler is not None else None,
@@ -402,8 +433,10 @@ def save_checkpoint(path, model, optimizer, scheduler, epoch, best_metric, exp_n
             "history": history or [],
             "epoch_seconds": epoch_seconds or [],
         },
-        path,
+        tmp,
     )
+    # A kill during torch.save leaves only the .tmp broken; the previous file stays usable.
+    os.replace(tmp, path)
 
 
 def _torch_load(path):
@@ -455,25 +488,96 @@ def stage_checkpoints_from_input(exp_name):
         return
     ckpt_dir = PATHS["working"] / "checkpoints"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
-    wanted = {f"{exp_name}_last.pt", f"{exp_name}_best.pt"}
-    if all((ckpt_dir / name).exists() for name in wanted):
-        return
     input_root = Path("/kaggle/input")
     if not input_root.exists():
         return
-    found = {}
+    candidates = {f"{exp_name}_last.pt": [], f"{exp_name}_best.pt": []}
     for dirpath, dirnames, filenames in os.walk(input_root):
         dirnames[:] = [d for d in dirnames if d != "Images"]
         for fn in filenames:
-            if fn in wanted and fn not in found:
-                found[fn] = Path(dirpath) / fn
-    for fn, src in found.items():
-        dst = ckpt_dir / fn
-        if not dst.exists():
-            shutil.copy2(src, dst)
-            print("Staged checkpoint from input:", src, "->", dst)
-    if not found:
+            if fn in candidates:
+                candidates[fn].append(Path(dirpath) / fn)
+    if not any(candidates.values()):
         print(f"No {exp_name} checkpoints found in /kaggle/input; training starts from ImageNet weights.")
+        return
+    # Several copies can be attached (e.g. the old checkpoint dataset AND the previous run's
+    # output). Always take the most advanced one, otherwise the same epoch is trained forever.
+    for fn, paths in candidates.items():
+        dst = ckpt_dir / fn
+        pool = ([dst] if dst.exists() else []) + list(paths)
+        if not pool:
+            continue
+        rank = checkpoint_progress if fn.endswith("_last.pt") else checkpoint_best_metric
+        scored = [(rank(p), p) for p in pool]
+        for score, p in scored:
+            print(f"  found {p}  ->  {score}")
+        best_score, src = max(scored, key=lambda t: t[0])
+        if src != dst:
+            shutil.copy2(src, dst)
+            print("Staged checkpoint from input:", src, "->", dst, best_score)
+
+
+def _ckpt_meta(path):
+    try:
+        ck = torch.load(path, map_location="cpu", weights_only=False, mmap=True)
+    except TypeError:
+        ck = _torch_load(path)
+    except Exception as e:
+        print("  could not read", path, e)
+        return {}
+    meta = {"epoch": ck.get("epoch", 0), "partial": ck.get("partial"), "best_metric": ck.get("best_metric")}
+    del ck
+    gc.collect()
+    return meta
+
+
+def checkpoint_progress(path):
+    """(completed_epochs, steps_into_next_epoch): larger = further along."""
+    meta = _ckpt_meta(path)
+    partial = meta.get("partial") or {}
+    return (int(meta.get("epoch") or 0), int(partial.get("step", 0)))
+
+
+def checkpoint_best_metric(path):
+    meta = _ckpt_meta(path)
+    return float(meta["best_metric"]) if meta.get("best_metric") is not None else -1.0
+
+
+def write_training_progress(exp_name, epochs_completed, epochs_total, partial):
+    out = {
+        "experiment": exp_name,
+        "epochs_completed": int(epochs_completed),
+        "epochs_target": int(epochs_total),
+        "partial_epoch": partial,
+        "all_epochs_done": int(epochs_completed) >= int(epochs_total),
+        "written_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    with open(PATHS["working"] / "logs" / f"{exp_name}_training_progress.json", "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=2)
+
+
+def print_training_progress(exp_name, epochs_completed, epochs_total, partial, stop_after, steps_per_epoch,
+                            final=False):
+    bar = "#" * 72
+    print(bar)
+    head = "END OF RUN" if final else "START OF RUN"
+    print(f"{head} | {exp_name}: {epochs_completed}/{epochs_total} epochs completed")
+    if partial:
+        print(f"  epoch {int(partial['epoch'])+1} is partly done: step {int(partial['step'])}/{steps_per_epoch}")
+    if not final:
+        if epochs_completed >= epochs_total:
+            print("  All epochs are done. No training this run; going straight to evaluation.")
+        else:
+            print(f"  This run trains epoch {epochs_completed+1} to epoch {stop_after} "
+                  f"(epochs_per_run={CONFIG.get('epochs_per_run')}).")
+    else:
+        if epochs_completed >= epochs_total:
+            print("  TRAINING FINISHED. Test evaluation runs below.")
+        else:
+            nxt = int(partial["epoch"]) + 1 if partial else epochs_completed + 1
+            print(f"  Next run continues with epoch {nxt}. Save this version's output as input for the next run.")
+    print(bar)
+    write_training_progress(exp_name, epochs_completed, epochs_total, partial)
 
 
 def load_checkpoint_if_any(path, model, optimizer=None, scheduler=None):
@@ -565,14 +669,14 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
             scheduler.step()
     history = list((resumed or {}).get("history", []))
     epoch_seconds = list((resumed or {}).get("epoch_seconds", []))
+    partial = (resumed or {}).get("partial") if resume_path == ckpt_last else None
+    scaler_state = (resumed or {}).get("scaler_state_dict")
     del resumed
     # A last.pt written by older notebook versions stored a stale best_metric; trust best.pt.
     if resume_path == ckpt_last and ckpt_best.exists() and CONFIG["resume"]:
-        best_ckpt = _torch_load(ckpt_best)
-        best_from_file = best_ckpt.get("best_metric")
-        del best_ckpt
-        if best_from_file is not None:
-            best_metric = max(float(best_metric if best_metric is not None else -1.0), float(best_from_file))
+        best_from_file = checkpoint_best_metric(ckpt_best)
+        if best_from_file > -1.0:
+            best_metric = max(float(best_metric if best_metric is not None else -1.0), best_from_file)
     best_metric = -1.0 if best_metric is None else float(best_metric)
     gc.collect()
     if torch.cuda.is_available():
@@ -585,14 +689,33 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
     except Exception:
         scaler = torch.cuda.amp.GradScaler(enabled=scaler_enabled)
         autocast_ctx = lambda: torch.cuda.amp.autocast(enabled=scaler_enabled)
+    if scaler_state and scaler_enabled:
+        try:
+            scaler.load_state_dict(scaler_state)
+        except Exception as e:
+            print("AMP scaler state not loaded:", e)
+
+    epochs_total = int(CONFIG["epochs"])
+    per_run = CONFIG.get("epochs_per_run")
+    stop_after = epochs_total if not per_run else min(epochs_total, start_epoch + int(per_run))
+    if partial is not None and int(partial.get("epoch", -1)) != start_epoch:
+        print("Ignoring a partial-epoch record that does not match the completed-epoch count:", partial)
+        partial = None
     train_info = {
         "history": history,
         "best_metric": best_metric,
         "loss_config": loss_cfg,
         "epochs_completed": start_epoch,
-        "epochs_target": CONFIG["epochs"],
+        "epochs_target": epochs_total,
+        "epochs_trained_this_run": 0,
         "stopped_for_time": False,
+        "partial_epoch": partial,
     }
+    seeded = isinstance(getattr(train_loader, "sampler", None), EpochSeededSampler)
+    if seeded:
+        train_loader.sampler.set_epoch(start_epoch, 0)
+    steps_per_epoch = len(train_loader)
+    print_training_progress(exp_name, start_epoch, epochs_total, partial, stop_after, steps_per_epoch)
     if CONFIG["skip_training"]:
         print("skip_training=True: evaluating the loaded checkpoint without training")
         if ckpt_best.exists():
@@ -604,8 +727,20 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
     elapsed = lambda: time.time() - t0_nb
 
     accum = max(int(CONFIG["gradient_accumulation"]), 1)
-    for epoch in range(start_epoch, CONFIG["epochs"]):
-        if epoch_seconds:
+    mid_min = CONFIG.get("mid_epoch_checkpoint_minutes")
+    mid_s = float(mid_min) * 60.0 if mid_min else None
+    for epoch in range(start_epoch, stop_after):
+        start_step, running, seen, prior_seconds = 0, 0.0, 0, 0.0
+        if partial is not None and int(partial["epoch"]) == epoch and seeded:
+            start_step = int(partial["step"])
+            running = float(partial.get("running", 0.0))
+            seen = int(partial.get("seen", 0))
+            prior_seconds = float(partial.get("elapsed_s", 0.0))
+            print(f"Continuing epoch {epoch+1} from step {start_step}/{steps_per_epoch} (saved mid-epoch).")
+        partial = None
+        # Without mid-epoch saves an epoch cut off by the budget is lost, so don't start one
+        # that can't finish. With mid-epoch saves, starting is always worth it.
+        if mid_s is None and start_step == 0 and epoch_seconds:
             est = float(np.median(epoch_seconds))
             if elapsed() + est > budget_s:
                 print(
@@ -614,22 +749,36 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
                 )
                 train_info["stopped_for_time"] = True
                 break
+        if seeded:
+            train_loader.sampler.set_epoch(epoch, start_step * int(CONFIG["batch_size"]))
         t_epoch = time.time()
+        last_save = time.time()
         stopped_mid_epoch = False
+        steps_done = start_step
         model.train()
-        running = 0.0
-        seen = 0
         optimizer.zero_grad(set_to_none=True)
-        memory_report(f"[{exp_name}] epoch {epoch+1} start")
+        memory_report(f"[{exp_name}] epoch {epoch+1}/{epochs_total} start (step {start_step})")
         mem_every = int(CONFIG.get("mem_log_every_steps", 2000))
+
+        def save_partial(reason):
+            info = {"epoch": epoch, "step": steps_done, "running": running, "seen": seen,
+                    "elapsed_s": prior_seconds + (time.time() - t_epoch)}
+            save_checkpoint(ckpt_last, model, optimizer, scheduler, epoch, best_metric, exp_name, exp_cfg,
+                            loss_cfg, history=history, epoch_seconds=epoch_seconds, partial=info, scaler=scaler)
+            write_training_progress(exp_name, epoch, epochs_total, info)
+            print(f"  [{reason}] saved mid-epoch checkpoint: epoch {epoch+1} step {steps_done}/{steps_per_epoch}")
+
         # mininterval keeps the saved output of a 10h committed run small.
-        pbar = tqdm(train_loader, desc=f"{exp_name} ep{epoch+1}/{CONFIG['epochs']}", mininterval=60)
-        for step, batch in enumerate(pbar):
-            if elapsed() > budget_s:
+        pbar = tqdm(train_loader, desc=f"{exp_name} ep{epoch+1}/{epochs_total}", mininterval=60,
+                    initial=start_step, total=steps_per_epoch)
+        for local_step, batch in enumerate(pbar):
+            step = start_step + local_step
+            # local_step > 0: every run makes at least one step of progress, never a no-op resume.
+            if local_step > 0 and elapsed() > budget_s:
                 stopped_mid_epoch = True
                 break
             if mem_every > 0 and step > 0 and step % mem_every == 0:
-                memory_report(f"[{exp_name}] epoch {epoch+1} step {step}/{len(train_loader)}")
+                memory_report(f"[{exp_name}] epoch {epoch+1} step {step}/{steps_per_epoch}")
             images = batch["image"].to(DEVICE, non_blocking=True)
             labels = batch["label"].to(DEVICE, non_blocking=True)
             masks = batch["mask"].to(DEVICE, non_blocking=True)
@@ -638,25 +787,36 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
                 losses = criterion(outputs, labels, masks if model.segmentation else None)
                 loss = losses["total"] / accum
             scaler.scale(loss).backward()
-            if (step + 1) % accum == 0 or (step + 1) == len(train_loader):
+            stepped = (step + 1) % accum == 0 or (step + 1) == steps_per_epoch
+            if stepped:
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad(set_to_none=True)
             bs = images.size(0)
             running += float(losses["total"].item()) * bs
             seen += bs
+            steps_done = step + 1
             pbar.set_postfix(
                 loss=f"{losses['total'].item():.4f}",
                 cls=f"{float(losses['classification']):.4f}",
                 seg=f"{float(losses['segmentation']):.4f}",
             )
             del images, labels, masks, outputs, loss
+            if mid_s is not None and stepped and steps_done < steps_per_epoch and time.time() - last_save >= mid_s:
+                save_partial("periodic")
+                last_save = time.time()
         if stopped_mid_epoch:
-            print(
-                f"Time budget of {budget_s/3600:.2f}h reached during epoch {epoch+1}. "
-                "Discarding the partial epoch; the last completed epoch stays in *_last.pt."
-            )
             train_info["stopped_for_time"] = True
+            if mid_s is not None and steps_done > start_step:
+                save_partial("time budget")
+                train_info["partial_epoch"] = {"epoch": epoch, "step": steps_done}
+                print(f"Time budget of {budget_s/3600:.2f}h reached during epoch {epoch+1}. "
+                      "Run the notebook again to continue from this step.")
+            else:
+                print(
+                    f"Time budget of {budget_s/3600:.2f}h reached during epoch {epoch+1}. "
+                    "Discarding the partial epoch; the last completed epoch stays in *_last.pt."
+                )
             break
         scheduler.step()
         train_loss = running / max(seen, 1)
@@ -673,7 +833,7 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
             "lambda_seg": loss_cfg["lambda_seg"] if exp_cfg["segmentation"] else 0.0,
             "val_miou_fake": val_metrics.get("miou"),
         }
-        epoch_seconds.append(time.time() - t_epoch)
+        epoch_seconds.append(prior_seconds + (time.time() - t_epoch))
         row["epoch_seconds"] = epoch_seconds[-1]
         history.append(row)
         print(row)
@@ -683,13 +843,20 @@ def train_experiment(exp_name, exp_cfg, train_loader, val_loader, loss_cfg=None)
         if is_best:
             best_metric = val_metrics["f1"]
         save_checkpoint(ckpt_last, model, optimizer, scheduler, epoch + 1, best_metric, exp_name, exp_cfg, loss_cfg,
-                        history=history, epoch_seconds=epoch_seconds)
+                        history=history, epoch_seconds=epoch_seconds, scaler=scaler)
         if is_best:
             save_checkpoint(ckpt_best, model, optimizer, scheduler, epoch + 1, best_metric, exp_name, exp_cfg, loss_cfg,
-                            history=history, epoch_seconds=epoch_seconds)
+                            history=history, epoch_seconds=epoch_seconds, scaler=scaler)
             print("  saved best", ckpt_best, "F1", best_metric)
         train_info["epochs_completed"] = epoch + 1
+        train_info["epochs_trained_this_run"] += 1
+        train_info["partial_epoch"] = None
+        write_training_progress(exp_name, epoch + 1, epochs_total, None)
+        print(f"EPOCH {epoch+1}/{epochs_total} COMPLETE for {exp_name} "
+              f"({epoch_seconds[-1]/3600:.2f}h). Saved {ckpt_last.name} with epoch={epoch + 1}.")
     train_info["best_metric"] = best_metric
+    print_training_progress(exp_name, train_info["epochs_completed"], epochs_total,
+                            train_info["partial_epoch"], None, steps_per_epoch, final=True)
     if ckpt_best.exists():
         load_checkpoint_if_any(ckpt_best, model)
     return model, train_info
@@ -1209,6 +1376,23 @@ def run_all_experiments():
         exp_cfg = EXPERIMENTS[exp_name]
         try:
             model, train_info = train_experiment(exp_name, exp_cfg, TRAIN_LOADER, VAL_LOADER)
+            done = train_info.get("epochs_completed", 0) >= int(CONFIG["epochs"])
+            if CONFIG.get("test_eval_when", "always") == "final" and not done:
+                print(f"test_eval_when='final': {exp_name} has {train_info.get('epochs_completed')}/"
+                      f"{CONFIG['epochs']} epochs, so the test set is not evaluated this run.")
+                models[exp_name] = model
+                GLOBAL_MODEL = model
+                summary_rows.append({
+                    "experiment": exp_name,
+                    "multi_stream": exp_cfg["multi_stream"],
+                    "segmentation": exp_cfg["segmentation"],
+                    "best_val_f1": train_info.get("best_metric"),
+                    "epochs_completed": train_info.get("epochs_completed"),
+                    "epochs_target": train_info.get("epochs_target"),
+                    "partial_epoch_step": (train_info.get("partial_epoch") or {}).get("step"),
+                    "status": "training_in_progress",
+                })
+                continue
             criterion = VERITASLoss(
                 CONFIG["lambda_cls"], CONFIG["lambda_seg"], CONFIG["dice_weight"], exp_cfg["segmentation"]
             )

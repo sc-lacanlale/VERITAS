@@ -28,6 +28,10 @@ Each notebook prints `PROTOCOL_HASH`. All four hashes must match.
 
 The split is computed from that protocol at **image** level, so the same photos (and all of their faces) land in train/val/test for everyone.
 
+## One epoch per run
+
+Each of the four training notebooks trains **one** epoch per Save & Run All, then stops. Attach the latest successful version of **that same notebook** as input for the next run. Test predictions are written only after epoch 3. See `KAGGLE_RUN_GUIDE.md` section 5C.
+
 ## After training
 
 Each member downloads `/kaggle/working` (or at least):

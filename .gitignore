@@ -18,6 +18,9 @@ face_metadata.json
 finished_notebooks/*_best/
 finished_notebooks/*_last/
 finished_notebooks/checkpoints/
+finished_notebooks/*.md
+finished_notebooks/*.txt
+finished_notebooks/*.ipynb
 
 # OS
 Thumbs.db

@@ -209,20 +209,18 @@ Then confirm / set:
 "run_loss_sweeps": False,   # turn True only after the four variants finish
 ```
 
-### 5C. The 12-hour limit and resuming (important for full runs)
+### 5C. The 12-hour limit and resuming (all four group notebooks)
 
-One Full VERITAS epoch at 600px took ~7 hours on a single T4. Three epochs do not fit in one 12-hour Kaggle run, so training is split across runs:
+One epoch at 600px takes about 7 hours on a single T4. All four group notebooks therefore train **one epoch per Save & Run All** (`epochs_per_run: 1`). Test evaluation runs only after epoch 3.
 
-1. Each run trains until `time_budget_hours` (11 h), then evaluates the best checkpoint on the test set and saves predictions. You always get results, even from a partial run.
-2. When a run ends with `stopped_for_time = True` / `epochs_completed < 3` in `experiment_results.csv`, download from its **Output** tab:
-   ```text
-   checkpoints/<experiment>_last.pt
-   checkpoints/<experiment>_best.pt
-   ```
-3. Upload both files as a **private Kaggle dataset** (e.g. `veritas-full-ckpt`). For later runs, use **New Version** on that same dataset.
-4. Attach it to the notebook with **Add Input**, next to the OpenForensics dataset.
-5. **Save & Run All** again. The notebook copies the checkpoints into `/kaggle/working`, prints `Resumed ... epoch N`, and continues from the next epoch with the same learning-rate schedule as an uninterrupted run.
-6. Repeat until `epochs_completed = 3`. Only that final run's predictions go into the comparison notebook.
+1. After a run, open that version’s **Output** tab and check `logs/<experiment>_training_progress.json`. You want `epochs_completed` to have gone up by 1.
+2. In the editor, **remove** any older checkpoint dataset (for example an epoch-1-only dataset).
+3. **Add Input → Notebook**, search for **this same notebook**, and attach the **latest successful version**. Keep the OpenForensics dataset.
+4. Settings: Internet On, GPU T4 x2 is fine (`multi_gpu` stays False, so only one GPU is used).
+5. **Save Version → Save & Run All**. The log must start with `START OF RUN | <experiment>: N/3 epochs completed` and train epoch N+1. If it repeats the same N, the wrong (older) output is attached.
+6. Repeat until `epochs_completed = 3`. That last run writes `predictions/<experiment>_predictions.csv` for `VERITAS_05_compare.ipynb`.
+
+Progress is also saved every 30 minutes inside an epoch, so a crash or the 11-hour budget loses at most half an hour. When several checkpoints are attached, the notebook picks the one with the most epochs.
 
 Each account has roughly 30 GPU-hours per week (check [Kaggle settings](https://www.kaggle.com/settings)). Three epochs fit that; eight do not.
 
@@ -268,14 +266,14 @@ Do **not** skip cells. Later cells depend on earlier ones.
 | 9 | **16–18** models, losses, dataloaders | Variant list prints. Loaders show a batch count. |
 | 10 | **19–22** then **23. Automated tests** | Tests should print `PASS` lines. Training has not fully run yet unless you already executed the experiment cell. |
 | 11 | **24–26** inference helpers | Defines `predict_multi_face` and `debug_image`. |
-| 12 | **27. Run experiments** | This is the long cell. It trains every name in `experiments_to_run`, evaluates, writes CSV/checkpoints. Leave the tab open. |
+| 12 | **27. Run experiments** | This is the long cell. For a committed **Save & Run All** you can close the tab; check **Versions** later. |
 | 13 | **28. Qualitative visualization** | Debug overlays on held-out images. |
 
 ### Option B — Run All (after smoke has already worked)
 
-1. Menu: **Run → Run All** (or the Run All button).
-2. Stay on the page until the last cell finishes.
-3. If the session disconnects, reconnect; with **Persistence: Files only** and `"resume": True`, it can continue from checkpoints.
+1. Prefer **Save Version → Save & Run All** so the run continues if you close the tab.
+2. Interactive **Run → Run All** dies if the tab closes or wifi drops. Use it only for smoke.
+3. If an interactive session disconnects, reconnect; with **Persistence: Files only** and `"resume": True`, it can continue from checkpoints.
 
 ---
 
