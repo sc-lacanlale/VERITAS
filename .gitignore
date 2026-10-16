@@ -34,6 +34,14 @@ veritas-app/backend/.venv/
 veritas-app/backend/__pycache__/
 veritas-app/backend/**/__pycache__/
 
+# ForgeryNet public-test dump (images only; labels are a separate list)
+ForgeryNet/*.tar
+ForgeryNet/public/
+
+# Hard-set dumps (keep small id lists; skip the fat scored tables)
+hardset/_kaggle_dl/
+hardset/all_scored_faces.csv
+
 # OS
 Thumbs.db
 .DS_Store
