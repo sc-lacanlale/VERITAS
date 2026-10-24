@@ -1,0 +1,243 @@
+/* ── Print report: hidden on screen, shown only when printing ───────────── */
+
+.print-report {
+  display: none;
+}
+
+@media print {
+  /* Hide the entire app shell */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show only the print report */
+  #print-report,
+  #print-report * {
+    visibility: visible !important;
+  }
+
+  .print-report {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    background: #ffffff;
+    color: #142849;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Force background colors / images to print (Chrome, Edge, Firefox) */
+  .print-report,
+  .print-report * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}
+
+/* ── Report internal styles ─────────────────────────────────────────────── */
+.pr-header {
+  background: #142849 !important;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px;
+  margin-bottom: 28px;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.pr-logo-img {
+  height: 34px;
+  width: auto;
+}
+
+.pr-body {
+  padding: 0;
+}
+
+.pr-header-right {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-align: right;
+  color: #c9d2e3;
+  line-height: 1.5;
+}
+
+.pr-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: #75787d;
+  margin: 0 0 6px 0;
+}
+
+.pr-title {
+  font-size: 30px;
+  font-weight: 700;
+  color: #142849;
+  margin: 0 0 6px 0;
+  text-align: left;
+  letter-spacing: 0;
+}
+
+.pr-subtitle {
+  font-size: 13px;
+  color: #75787d;
+  margin: 0 0 18px 0;
+}
+
+.pr-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #142849;
+}
+
+.pr-rule {
+  border: none;
+  border-top: 1px solid #dadada;
+  margin: 18px 0;
+}
+
+.pr-section {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #142849;
+  margin: 0 0 16px 0;
+}
+
+.pr-num {
+  color: #a5aab5;
+  margin-right: 8px;
+}
+
+.pr-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 32px;
+}
+
+.pr-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #75787d;
+  margin: 0 0 2px 0;
+}
+
+.pr-value {
+  font-size: 14px;
+  color: #142849;
+  margin: 0;
+}
+
+.pr-callout {
+  border-left: 4px solid #142849;
+  background: #f6f7f9;
+  padding: 16px 18px;
+}
+
+.pr-callout-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #142849;
+  margin: 0 0 6px 0;
+}
+
+.pr-callout-body {
+  font-size: 13px;
+  color: #142849;
+  margin: 0;
+}
+
+.pr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pr-table th {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #75787d;
+  padding: 8px 6px;
+  border-bottom: 1px solid #dadada;
+}
+
+.pr-table td {
+  padding: 14px 6px;
+  border-bottom: 1px solid #eceef1;
+  vertical-align: middle;
+}
+
+.pr-face-id {
+  font-weight: 700;
+  color: #142849;
+}
+
+.pr-crop {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.pr-fake {
+  color: #c05852;
+  font-weight: 700;
+}
+
+.pr-real {
+  color: #2c8833;
+  font-weight: 700;
+}
+
+.pr-note {
+  font-size: 11px;
+  color: #75787d;
+  margin: 10px 0 0 0;
+}
+
+.pr-review-line {
+  font-size: 13px;
+  color: #142849;
+  margin: 0 0 32px 0;
+}
+
+.pr-sign-row {
+  display: flex;
+  gap: 40px;
+}
+
+.pr-sign-row > div {
+  flex: 1;
+}
+
+.pr-sign-line {
+  border-top: 1px solid #142849;
+  margin-bottom: 8px;
+}
+
+.pr-sign-label {
+  font-size: 13px;
+  color: #142849;
+  margin: 0;
+}
+
+.pr-sign-sub {
+  font-size: 12px;
+  color: #75787d;
+  margin: 2px 0 0 0;
+}

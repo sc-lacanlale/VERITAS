@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Override globals.css main constraints ───────────────────────────────── */
+.workspace-main {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ── Desktop: push content right of sidebar ─────────────────────────────── */
+@media (min-width: 1024px) {
+  .workspace-main {
+    margin-left: 220px !important;
+  }
+}
+
+/* ── Prevent text overflow in cards on all screens ──────────────────────── */
+.workspace-content * {
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* ── Mobile (< 640px) ───────────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .workspace-content {
+    padding: 16px !important;
+  }
+
+  /* Stack 4-col grid to 2-col */
+  .workspace-content .grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Stack bottom row */
+  .workspace-content .flex.gap-4.items-start {
+    flex-direction: column !important;
+  }
+
+  /* Workflow wraps naturally via flex-wrap */
+}
+
+/* ── Tablet (640–1023px) ─────────────────────────────────────────────────── */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .workspace-content {
+    padding: 24px 28px !important;
+  }
+
+  /* Stack 4-col to 2-col on tablet */
+  .workspace-content .grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Laptop (1024–1439px) ────────────────────────────────────────────────── */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .workspace-content {
+    padding: 32px 40px !important;
+  }
+
+  .workspace-main h1 { font-size: 2rem !important; }
+  .workspace-main h2 { font-size: 1.15rem !important; }
+
+  /* Bump up small Tailwind text sizes for readability on laptops */
+  .workspace-content .text-xs      { font-size: 0.8rem !important; }
+  .workspace-content .text-sm      { font-size: 0.95rem !important; }
+  .workspace-content .text-\[11px\]{ font-size: 0.8rem !important; }
+  .workspace-content .text-base    { font-size: 1.05rem !important; }
+}
+
+/* ── Large desktop (≥ 1440px) ───────────────────────────────────────────── */
+@media (min-width: 1440px) {
+  .workspace-content {
+    padding: 40px 64px !important;
+  }
+
+  .workspace-main h1 { font-size: 2.4rem !important; }
+  .workspace-main h2 { font-size: 1.3rem !important; }
+
+  /* Larger regular text on big screens */
+  .workspace-content .text-xs      { font-size: 0.85rem !important; }
+  .workspace-content .text-sm      { font-size: 1rem !important; }
+  .workspace-content .text-\[11px\]{ font-size: 0.85rem !important; }
+  .workspace-content .text-base    { font-size: 1.15rem !important; }
+}
+
+.workspace-main p.split-percentage {
+  font-size: 30px !important;
+  line-height: 1.1;
+}
+
+.workspace-main title {
+  font-size: 24px !important;
+  line-height: 1.1;
+}
