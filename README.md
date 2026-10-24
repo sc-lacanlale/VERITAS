@@ -2,41 +2,38 @@
 
 Vision-based EfficientNet-Reinforced Image Tampering Authentication and ASPP-Segmentation MTL-Framework.
 
-This repository is the **current** implementation: a single Kaggle notebook that trains and compares four EfficientNet-B7 variants on compiled OpenForensics, at **face level** (multiple mixed real/fake faces in one image).
-
-## Run this
-
-**Group (four GPUs in parallel):** each person imports one file from `notebooks/`, then merge with `notebooks/VERITAS_05_compare.ipynb`.  
-**Solo:** upload `VERITAS_Kaggle.ipynb` (trains all four variants sequentially).
-
-1. Attach dataset: [nathanielescuro/veritas-openforensics-compiled](https://www.kaggle.com/datasets/nathanielescuro/veritas-openforensics-compiled)
-2. Follow **`KAGGLE_RUN_GUIDE.md`** (when to import, attach data, edit `CONFIG`, then run).
-
-**Inference app** (upload one image → per-face real/fake + masks): see `veritas-app/README.md`. Checkpoint goes in `models/`.
-
-Default `run_mode` is `"smoke"` (tiny subset). Set `"full"` only after smoke succeeds on GPU. All four members must use the same `run_mode` and `PROTOCOL_HASH`.
-
-## What is in this repo
-
-| File | Purpose |
-| --- | --- |
-| `notebooks/VERITAS_01_baseline.ipynb` | Member A — baseline only |
-| `notebooks/VERITAS_02_multistream.ipynb` | Member B — multi-stream only |
-| `notebooks/VERITAS_03_segmentation.ipynb` | Member C — segmentation MTL only |
-| `notebooks/VERITAS_04_full.ipynb` | Member D — full VERITAS only |
-| `notebooks/VERITAS_05_compare.ipynb` | Merge the four runs (CPU) |
-| `VERITAS_Kaggle.ipynb` | All four experiments in one notebook |
-| `KAGGLE_RUN_GUIDE.md` | Step-by-step Kaggle instructions |
-| `agent.md` | Original implementation spec |
-| `build_notebook*.py` / `assemble_notebook.py` | Regenerates the all-in-one `.ipynb` |
-
-The OpenForensics images are **not** stored here. Use the Kaggle dataset.
-
-## Experiments
+Four EfficientNet-B7 variants, one experiment per notebook, face-crop level:
 
 | Name | Multi-stream | Segmentation |
 | --- | --- | --- |
-| `baseline_effb7` | no | no |
-| `multistream_no_seg` | yes | no |
-| `seg_no_multistream` | no | yes |
-| `full_veritas` | yes | yes |
+| `baseline_effb7_*` | no | no |
+| `multistream_no_seg_*` | yes | no |
+| `seg_no_multistream_*` | no | yes |
+| `full_veritas_*` | yes | yes |
+
+| Study | Folder | Files |
+| --- | --- | --- |
+| OpenForensics Wild | `notebooks-wild/` | `WILD_01` … `WILD_05` |
+| OpenForensics Full (GT-mask) | `notebooks-of/` | `OF_01` … `OF_05` |
+
+Wild B0 capacity check: `notebooks-wild-b0/`.
+
+The inference app uses the OpenForensics Full checkpoint (`full_veritas_defacto_best.zip` from `OF_04_full`). Teammates: **`APP_SETUP.md`**.
+
+Kaggle steps: **`KAGGLE_RUN_GUIDE.md`**. `WILD_05_compare` can attach the Full (`*_defacto`) checkpoint to score Wild Test.
+
+## What is in this repo
+
+| Path | Purpose |
+| --- | --- |
+| `notebooks-wild/` | Wild B7 ablations + compare |
+| `notebooks-of/` | OpenForensics Full B7 ablations + compare |
+| `notebooks-wild-b0/` | Wild EfficientNet-B0 baseline |
+| `make_wild_notebook.py` | Regenerates Wild notebooks |
+| `make_defacto_notebook.py` | Regenerates `notebooks-of/` |
+| `split_group_notebooks.py` | Regenerates both |
+| `KAGGLE_RUN_GUIDE.md` | Kaggle instructions |
+| `APP_SETUP.md` | Run the inference app |
+| `veritas-app/` | Inference UI + API |
+
+Images are not stored here. Attach the dataset on Kaggle. The ~800 MB zip is not in git.

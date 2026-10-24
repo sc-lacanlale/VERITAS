@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FaceList } from "@/components/FaceList";
 import { FaceResultCard } from "@/components/FaceResult";
 import { ImageUploader } from "@/components/ImageUploader";
 import { ImageViewer } from "@/components/ImageViewer";
-import { predictImage } from "@/lib/api";
+import { fetchHealth, predictImage, type HealthInfo } from "@/lib/api";
 import type { PredictionResponse } from "@/types/veritas";
 
 export default function Page() {
@@ -15,6 +15,11 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [health, setHealth] = useState<HealthInfo | null>(null);
+
+  useEffect(() => {
+    fetchHealth().then(setHealth);
+  }, []);
 
   const selected = useMemo(
     () => result?.faces.find((f) => f.face_id === selectedId) ?? null,
@@ -50,6 +55,12 @@ export default function Page() {
       <p className="muted" style={{ textAlign: "center" }}>
         Upload an image. Each face is classified independently.
       </p>
+      {health?.ok && (
+        <p className="muted" style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 1rem" }}>
+          Full VERITAS on <strong>OpenForensics</strong>. Each detected face is classified real or
+          fake. Fake faces show a localization mask. Threshold {health.classification_threshold}.
+        </p>
+      )}
       {result && (
         <p style={{ textAlign: "center" }}>
           <button

@@ -1,374 +1,87 @@
 # VERITAS — How to run on a Kaggle Notebook
 
-You can run this two ways:
+Two studies, two notebook folders. Pick **one** study per training session.
 
-1. **Group (recommended):** four training notebooks in `notebooks/`, one variant each, then `VERITAS_05_compare.ipynb`.
-2. **Solo:** `VERITAS_Kaggle.ipynb` trains all four variants **one after another** in one session (much longer).
+| Study | Import from | Attach | Experiment names |
+| --- | --- | --- | --- |
+| OpenForensics Wild | `notebooks-wild/` | `ahmedgamal/openforensics-wild-dataset` | `*_wild` |
+| OpenForensics Full | `notebooks-of/` | `defactodataset/defactoface` and `ahmedgamal/openforensics-wild-dataset` | `*_defacto` (kept so existing checkpoints match) |
 
-This guide is the full sequence: create the session, **then** import the notebook, **then** attach the dataset, **then** set GPU/internet, **then** edit config, **then** run.
+Wild B0: `notebooks-wild-b0/WILD_B0_01_baseline.ipynb`.
+
+The app test model is `full_veritas_defacto_best` from `OF_04_full`. `WILD_05_compare` will use that checkpoint as Full VERITAS on Wild Test if `full_veritas_wild` is missing.
 
 ---
 
 ## Group workflow (four people, four GPUs)
 
-Each member creates **their own** Kaggle notebook. Do not share one session.
+Each member uses **their own** Kaggle notebook.
 
-| Member | Import this file | Trains only |
-| --- | --- | --- |
-| A | `notebooks/VERITAS_01_baseline.ipynb` | Baseline EfficientNet-B7 |
-| B | `notebooks/VERITAS_02_multistream.ipynb` | Multi-stream, no segmentation |
-| C | `notebooks/VERITAS_03_segmentation.ipynb` | Segmentation / MTL, RGB only |
-| D | `notebooks/VERITAS_04_full.ipynb` | Full VERITAS |
+| Member | Wild | OpenForensics Full | Trains |
+| --- | --- | --- | --- |
+| A | `WILD_01_baseline.ipynb` | `OF_01_baseline.ipynb` | Baseline EfficientNet-B7 |
+| B | `WILD_02_multistream.ipynb` | `OF_02_multistream.ipynb` | Multi-stream, no segmentation |
+| C | `WILD_03_segmentation.ipynb` | `OF_03_segmentation.ipynb` | Segmentation / MTL, RGB only |
+| D | `WILD_04_full.ipynb` | `OF_04_full.ipynb` | Full VERITAS |
 
-**Before anyone clicks Run All**, agree on CONFIG. All four must match:
+Agree on CONFIG before Run All: `run_mode`, `seed` 42, `image_size`, `classification_threshold` 0.5.
 
-- `run_mode`: all `"smoke"` first, later all `"full"`
-- `seed`: `42`
-- `split_protocol`: `"70_15_15"`
-- `split_pool`: `"train_val_testdev"`
-- `image_size` (smoke overwrites to 320; full uses 600)
-- `classification_threshold`: `0.5`
+Compare `PROTOCOL_HASH` across the four notebooks of the same study.
 
-After the Environment + CONFIG cells, each notebook prints `PROTOCOL_HASH`.  
-**Compare those four hashes in the group chat.** If they differ, stop and fix CONFIG.
+### After epoch 1
 
-Then each member follows Steps 1–9 below using **their** `.ipynb`, not `VERITAS_Kaggle.ipynb`.
-
-### After all four finish
-
-1. Each member downloads `/kaggle/working` (Output panel) as a zip.
-2. One person makes a Kaggle dataset with four folders, e.g. `baseline/`, `multistream/`, `seg/`, `full/`.
-3. Create a **CPU** notebook (no GPU needed).
-4. Import `notebooks/VERITAS_05_compare.ipynb`.
-5. Attach that results dataset (and not necessarily the image dataset).
-6. Run All. It writes `experiment_results_compared.csv` and McNemar / Wilcoxon tests on paired `(image_id, face_id)` rows.
-
-Comparison is valid only if the protocol hashes and the test image IDs match.
+1. `WILD_05_compare.ipynb` or `OF_05_compare.ipynb`.
+2. Attach each training output. For Wild Test of the Full model you may attach `OF_04_full` (`full_veritas_defacto_best.pt`) instead of `WILD_04`.
+3. GPU T4 if scoring checkpoints.
 
 ---
 
-## What you need before opening Kaggle
+## What you need
 
-1. A Kaggle account (phone-verified if Kaggle asks you to verify before using GPUs).
-2. GPU quota remaining: [Kaggle Account settings](https://www.kaggle.com/settings) → scroll to **Accelerators** / GPU quota.
-3. The local notebook you were assigned (see the group table above), for example:
-   ```text
-   notebooks/VERITAS_01_baseline.ipynb
-   ```
-   Solo users import `VERITAS_Kaggle.ipynb` instead.
-4. The dataset (already public; you will attach it inside Kaggle, not upload the 100k images yourself):
-   ```text
-   https://www.kaggle.com/datasets/nathanielescuro/veritas-openforensics-compiled
-   ```
+1. Kaggle account (GPU quota).
+2. The notebook you were assigned.
+3. The dataset(s) for that study.
 
 ---
 
 ## Step 1 — Sign in
 
-1. Open [https://www.kaggle.com](https://www.kaggle.com).
-2. Sign in.
-3. Confirm you can see **Code**, **Datasets**, and **Create** in the left/top navigation.
+Open https://www.kaggle.com and sign in.
 
 ---
 
-## Step 2 — Create a blank GPU notebook (do this first)
+## Step 2 — Create a blank GPU notebook
 
-Do **not** import the `.ipynb` yet. Create the Kaggle session first so GPU, internet, and data can be attached to it.
-
-1. Click **Create** (or **Code → New Notebook**).
-2. Kaggle opens a new untitled notebook with a default empty cell.
-3. At the top, click the notebook title (`Untitled`) and rename it, for example:
-   ```text
-   VERITAS OpenForensics
-   ```
-4. Open **Session options** (right sidebar; gear icon / **Settings** depending on the UI):
-
-   | Setting | Required value | Why |
-   | --- | --- | --- |
-   | **Accelerator** | **GPU T4 x2** (or P100 / GPU) | EfficientNet-B7 will be extremely slow on CPU |
-   | **Internet** | **On** | Downloads ImageNet EfficientNet-B7 weights and the MediaPipe face-detector `.tflite` |
-   | **Persistence** | **Files only** (recommended) | Keeps `/kaggle/working` checkpoints if the session restarts |
-   | **Language** | Python | Default |
-
-5. Wait until the session status shows **running** (not “queued”).  
-   If GPU is queued for a long time, leave this tab open; do not import the notebook into a CPU session and hope to switch later without a restart.
-
-**Checkpoint:** the right sidebar should show a GPU accelerator, Internet On, and a live session.
+1. **Create** → New Notebook.
+2. Accelerator **GPU T4**, Internet **On**, Persistence **Files only**, Python.
+3. Wait until the session is running.
 
 ---
 
-## Step 3 — Import `VERITAS_Kaggle.ipynb` into this session
+## Step 3 — Import the `.ipynb`
 
-Import **after** the GPU session exists. Importing first into a CPU notebook and then turning GPU on often requires a restart and can drop unsaved cells.
-
-1. In the notebook menu: **File → Import notebook**.
-2. Choose **Upload**.
-3. Select **your assigned** local file, for example:
-   ```text
-   notebooks/VERITAS_01_baseline.ipynb
-   ```
-   (or `VERITAS_Kaggle.ipynb` if you are running all four variants yourself)
-4. Confirm. Kaggle replaces (or adds) the cells from that file.
-5. Scroll the notebook. You should see sections starting with:
-
-   ```text
-   VERITAS — Vision-based EfficientNet-Reinforced Image Tampering Authentication
-   ```
-
-   then **1. Environment**, **2. Imports**, **3. Dataset discovery**, **5. Central configuration**, and so on.
-
-6. If Kaggle asks whether to keep the current notebook or overwrite, choose the imported VERITAS notebook as the active notebook.
-
-**Do not click Run All yet.**
+File → Import notebook → upload `WILD_0x` or `OF_0x`.
 
 ---
 
-## Step 4 — Attach the dataset (before any cell that loads images)
+## Step 4 — Attach the dataset
 
-The notebook reads from `/kaggle/input/`. If the dataset is not attached, discovery fails.
-
-1. In the right sidebar click **Add Input** / **+ Add data**.
-2. Open the **Datasets** tab.
-3. Search:
-   ```text
-   veritas-openforensics-compiled
-   ```
-   or paste:
-   ```text
-   nathanielescuro/veritas-openforensics-compiled
-   ```
-4. Click **Add** / **+** on that dataset.
-5. Wait until it appears under **Input**. You should see a folder similar to:
-   ```text
-   /kaggle/input/veritas-openforensics-compiled/
-   ```
-6. Expand it and confirm these exist somewhere under that folder (names may be nested one extra level):
-   - `compiled_index.parquet` (preferred index)
-   - `compiled_poly.json`
-   - `Images/` (flat `.jpg` files)
-
-You do **not** copy the local `dataset/` folder onto Kaggle. The public dataset is the same compiled OpenForensics set.
-
-**Do not click Run All yet.**
+1. Add Input → Datasets.
+2. Wild: `openforensics-wild-dataset`.
+3. OpenForensics Full (`OF_*`): add `defactodataset/defactoface` **and** `ahmedgamal/openforensics-wild-dataset`.
 
 ---
 
-## Step 5 — Edit configuration (the only cell you must change)
+## Step 5 — CONFIG
 
-Find the markdown heading **5. Central configuration** and the code cell under it that starts with:
-
-```python
-CONFIG: Dict[str, Any] = {
-    "run_mode": "smoke",
-    ...
-}
-```
-
-Edit **this cell only**, then stop. Do not edit model code.
-
-### 5A. First run on Kaggle (do this)
-
-Leave smoke mode on so you can prove GPU + dataset + training work:
-
-```python
-"run_mode": "smoke",
-```
-
-Smoke automatically uses:
-
-- 24 train / 8 val / 8 test **images**
-- `image_size = 320`
-- `epochs = 1`
-- all four experiment names
-- no loss-weight sweep
-
-This is the correct first run. It is **not** the thesis result.
-
-### 5B. Thesis / full research run (only after smoke succeeds)
-
-Change:
-
-```python
-"run_mode": "full",
-```
-
-Then confirm / set:
-
-```python
-"image_size": 600,          # EfficientNet-B7 native size
-"batch_size": 4,            # drop to 2 or 1 if you OOM
-"gradient_accumulation": 1, # raise to 4 if batch_size is 1
-"epochs": 3,                # same value for all four group notebooks
-"split_protocol": "70_15_15",
-"split_pool": "train_val_testdev",
-"skip_training": False,
-"resume": True,
-"time_budget_hours": 11.0,  # training stops here so test eval finishes before Kaggle's 12h cutoff
-"resume_from_input": True,
-"multi_gpu": False,         # keep False: 2-GPU mode ran out of RAM and changes BatchNorm batch size
-"run_loss_sweeps": False,   # turn True only after the four variants finish
-```
-
-### 5C. The 12-hour limit and resuming (all four group notebooks)
-
-One epoch at 600px takes about 7 hours on a single T4. All four group notebooks therefore train **one epoch per Save & Run All** (`epochs_per_run: 1`). Test evaluation runs only after epoch 3.
-
-1. After a run, open that version’s **Output** tab and check `logs/<experiment>_training_progress.json`. You want `epochs_completed` to have gone up by 1.
-2. In the editor, **remove** any older checkpoint dataset (for example an epoch-1-only dataset).
-3. **Add Input → Notebook**, search for **this same notebook**, and attach the **latest successful version**. Keep the OpenForensics dataset.
-4. Settings: Internet On, GPU T4 x2 is fine (`multi_gpu` stays False, so only one GPU is used).
-5. **Save Version → Save & Run All**. The log must start with `START OF RUN | <experiment>: N/3 epochs completed` and train epoch N+1. If it repeats the same N, the wrong (older) output is attached.
-6. Repeat until `epochs_completed = 3`. That last run writes `predictions/<experiment>_predictions.csv` for `VERITAS_05_compare.ipynb`.
-
-Progress is also saved every 30 minutes inside an epoch, so a crash or the 11-hour budget loses at most half an hour. When several checkpoints are attached, the notebook picks the one with the most epochs.
-
-Each account has roughly 30 GPU-hours per week (check [Kaggle settings](https://www.kaggle.com/settings)). Three epochs fit that; eight do not.
-
-Optional official OpenForensics split instead of SOP 70/15/15:
-
-```python
-"split_protocol": "official_openforensics",
-```
+Set `run_mode` to `"smoke"` first, then `"full"`. Full needs CUDA.
 
 ---
 
-## Step 6 — Save a version (optional but useful)
+## Step 6 — Run All
 
-Before a long run:
+Save Version → Save & Run All. Check `CUDA available: True` and `START OF RUN`.
 
-1. **Save Version** (top right).
-2. Version type: **Quick Save** is enough before smoke. Use **Save & Run All** only when you already trust the config.
-3. Add a note: `smoke first run` or `full baseline only`.
+One epoch per run. Attach **this** notebook’s latest successful output for the next epoch.
 
-This stores the notebook snapshot. Training artifacts still go to `/kaggle/working`.
-
----
-
-## Step 7 — Run, in this order
-
-You have two options. Option A is safer the first time.
-
-### Option A — Run section by section (recommended first time)
-
-Use **Shift+Enter** (run current cell and move to the next).  
-Do **not** skip cells. Later cells depend on earlier ones.
-
-| When | What to run | What you must see before continuing |
-| --- | --- | --- |
-| 1 | **1. Environment** | `CUDA available: True` and a GPU name. If you see `GPU: CPU fallback`, **stop**. Set Accelerator to GPU, restart the session, come back to Step 2/4 (dataset stays attached). |
-| 2 | **2. Imports** | No import error. MediaPipe version prints. `MediaPipe Tasks API not importable` is a warning only if the detector later falls back. |
-| 3 | **3. Dataset discovery** and **4. Dataset structure** | Prints `parquet:`, `poly.json:`, `Images:` under `/kaggle/input/...`. Sample `.jpg` names appear. If `FileNotFoundError`, go back to Step 4 and attach the dataset, then re-run discovery. |
-| 4 | **5. Central configuration** | Prints `run_mode: smoke` or `full`, `device: cuda`, and the rest of CONFIG. Confirm this matches what you intended. |
-| 5 | **6. Reproducibility** through **7. Annotation inspection** | `category_id` counts, `0 => real`, `1 => fake`, mixed real/fake image count. |
-| 6 | **8–12** geometry, detector, matching, masks | Detector line like `Using MediaPipe Tasks FaceDetector`. First time this may download a `.tflite` (needs Internet On). |
-| 7 | **13–15** dataset class + split | `Using SOP image-level 70/15/15...` (or official splits). Train/val/test image counts. Face samples built with `skipped missing 0` (or a small number). |
-| 8 | **14b. Preprocessing before / after samples** | Figures: raw image vs boxes/polygons, then 8-panel face strips (crop → letterbox → mask → RGB / residual / FFT). Inspect these **before** training. |
-| 9 | **16–18** models, losses, dataloaders | Variant list prints. Loaders show a batch count. |
-| 10 | **19–22** then **23. Automated tests** | Tests should print `PASS` lines. Training has not fully run yet unless you already executed the experiment cell. |
-| 11 | **24–26** inference helpers | Defines `predict_multi_face` and `debug_image`. |
-| 12 | **27. Run experiments** | This is the long cell. For a committed **Save & Run All** you can close the tab; check **Versions** later. |
-| 13 | **28. Qualitative visualization** | Debug overlays on held-out images. |
-
-### Option B — Run All (after smoke has already worked)
-
-1. Prefer **Save Version → Save & Run All** so the run continues if you close the tab.
-2. Interactive **Run → Run All** dies if the tab closes or wifi drops. Use it only for smoke.
-3. If an interactive session disconnects, reconnect; with **Persistence: Files only** and `"resume": True`, it can continue from checkpoints.
-
----
-
-## Step 8 — While training is running
-
-- Do not close the Kaggle tab if you can avoid it.
-- Do not turn **Internet** off until EfficientNet-B7 weights and the MediaPipe model have finished downloading (usually during the first model build).
-- If you see **CUDA out of memory**:
-  1. Stop the run.
-  2. In CONFIG set `"batch_size": 1` and `"gradient_accumulation": 4`.
-  3. Restart the session (keep dataset + GPU + internet).
-  4. Re-run from the top. `"resume": True` will pick up `*_best.pt` / `*_last.pt` if they exist.
-- Kaggle GPU sessions are time-limited (often ~9 hours). Plan `experiments_to_run` so one session can finish.
-
----
-
-## Step 9 — After the last cell
-
-Confirm these files under `/kaggle/input` is read-only; **outputs** are under `/kaggle/working`:
-
-```text
-/kaggle/working/
-├── checkpoints/
-│   ├── baseline_effb7_best.pt
-│   ├── baseline_effb7_last.pt
-│   ├── multistream_no_seg_best.pt
-│   ├── seg_no_multistream_best.pt
-│   └── full_veritas_best.pt
-├── predictions/
-│   ├── baseline_effb7_predictions.csv
-│   └── ...
-├── debug/
-│   ├── preproc_image_*.png
-│   ├── preproc_face_*.png
-│   └── debug_*.png
-├── logs/
-│   ├── image_splits.json
-│   ├── unit_tests.json
-│   └── *_history.json
-└── experiment_results.csv
-```
-
-Unrun experiments are written as `NOT RUN` or `N/A`. The notebook does not invent metrics.
-
-### Download results
-
-1. In the right sidebar open **Output** / `/kaggle/working`.
-2. Download `experiment_results.csv`, `predictions/`, and `checkpoints/` at minimum.
-3. **Save Version → Quick Save** so the executed notebook (plots in cells) is stored on Kaggle.
-
----
-
-## Step 10 — Next session (full run or the next variant)
-
-1. Open the **same** Kaggle notebook (not a brand-new blank one), so `/kaggle/working` persistence can reload.
-2. Confirm **GPU + Internet + dataset** are still attached (repeat Steps 2 and 4 if this is a new notebook copy).
-3. Change CONFIG (`run_mode`, `experiments_to_run`) as needed.
-4. Run All again. With `"resume": True`, finished variants keep their checkpoints.
-
-To force a clean retrain of one variant, delete its files in `/kaggle/working/checkpoints/` first.
-
-If you change the face detector or confidence threshold, delete:
-
-```text
-/kaggle/working/face_metadata.json
-```
-
-so detection cache is rebuilt.
-
----
-
-## What not to do
-
-- Do not import the notebook **before** creating the GPU session if you can avoid it.
-- Do not hit Run All before the dataset is attached.
-- Do not start `"run_mode": "full"` until smoke has shown `CUDA available: True`, discovery paths, preprocess figures, and at least one training epoch.
-- Do not clone a private GitHub repo or point the notebook at your PC `C:\Users\...` paths. Kaggle must use `/kaggle/input/` and `/kaggle/working/`.
-- Do not use deprecated `mediapipe.solutions` code. The notebook already uses MediaPipe **Tasks**.
-- Do not run cells out of order.
-
----
-
-## Short checklist (print this)
-
-- [ ] Kaggle signed in, GPU quota available
-- [ ] **Create → New Notebook**
-- [ ] Rename notebook
-- [ ] Accelerator = GPU, Internet = On, Persistence = Files only
-- [ ] Wait until session is running
-- [ ] **File → Import notebook → Upload `VERITAS_Kaggle.ipynb`**
-- [ ] **Add Input** → `nathanielescuro/veritas-openforensics-compiled`
-- [ ] Edit **5. Central configuration** (`smoke` first, then `full`)
-- [ ] Run Environment cell → confirm CUDA
-- [ ] Run discovery → confirm `/kaggle/input/...` paths
-- [ ] Inspect preprocess before/after figures
-- [ ] Run All / remaining cells through experiment table
-- [ ] Download `/kaggle/working/experiment_results.csv` and checkpoints
-- [ ] Save Version
+App setup after you have `full_veritas_defacto_best.zip`: **`APP_SETUP.md`**.

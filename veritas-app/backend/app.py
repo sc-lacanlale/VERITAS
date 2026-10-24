@@ -62,6 +62,7 @@ def startup():
             geo,
             MODEL_CONFIG["classification_threshold"],
             MODEL_CONFIG["mask_threshold"],
+            emit_masks=MODEL_CONFIG.get("emit_masks", True),
         )
         STATE["detector"] = build_face_detector(MODEL_CONFIG["face_score_threshold"], cache)
         STATE["ready"] = True
@@ -81,6 +82,10 @@ def health():
         "model": model_status() if STATE["ready"] else STATE.get("error") or "MODEL_NOT_CONFIGURED",
         "detector": getattr(STATE.get("detector"), "name", None),
         "image_size": MODEL_CONFIG["image_size"],
+        "checkpoint": Path(MODEL_CONFIG["checkpoint"]).name,
+        "checkpoint_kind": MODEL_CONFIG.get("checkpoint_kind"),
+        "classification_threshold": MODEL_CONFIG["classification_threshold"],
+        "emit_masks": MODEL_CONFIG.get("emit_masks", True),
     }
 
 

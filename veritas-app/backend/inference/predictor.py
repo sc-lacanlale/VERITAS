@@ -13,12 +13,21 @@ from .visualization import annotate_full_image, encode_jpeg, encode_png, overlay
 
 
 class VeritasInference:
-    def __init__(self, model, device, geo: GeometryTransform, threshold: float, mask_threshold: float):
+    def __init__(
+        self,
+        model,
+        device,
+        geo: GeometryTransform,
+        threshold: float,
+        mask_threshold: float,
+        emit_masks: bool = True,
+    ):
         self.model = model
         self.device = device
         self.geo = geo
         self.threshold = float(threshold)
         self.mask_threshold = float(mask_threshold)
+        self.emit_masks = bool(emit_masks)
 
     @torch.no_grad()
     def predict_image(self, image_rgb: np.ndarray, faces: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -50,7 +59,7 @@ class VeritasInference:
             crop_mask_png = None
             full_mask_png = None
             mask_full = None
-            if seg is not None:
+            if self.emit_masks and seg is not None:
                 face_prob = seg[i, 0]
                 face_bin = (face_prob >= self.mask_threshold).astype(np.float32)
                 crop_overlay = overlay_mask(canvases[i], face_bin)
@@ -64,7 +73,7 @@ class VeritasInference:
                 "detector_confidence": float(face.get("confidence", 0.0)),
                 "classification": {"label": label, "fake_probability": p},
                 "segmentation": {
-                    "available": seg is not None,
+                    "available": bool(self.emit_masks and seg is not None),
                     "mask": full_mask_png,
                     "crop_mask": crop_mask_png,
                 },

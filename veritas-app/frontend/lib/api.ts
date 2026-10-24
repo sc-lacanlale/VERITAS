@@ -2,6 +2,24 @@ import type { PredictionResponse } from "@/types/veritas";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
+export type HealthInfo = {
+  ok: boolean;
+  checkpoint?: string;
+  checkpoint_kind?: string;
+  classification_threshold?: number;
+  emit_masks?: boolean;
+};
+
+export async function fetchHealth(): Promise<HealthInfo | null> {
+  try {
+    const response = await fetch(`${BACKEND_URL}/health`);
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function predictImage(file: File): Promise<PredictionResponse> {
   const formData = new FormData();
   formData.append("image", file);

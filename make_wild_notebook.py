@@ -112,7 +112,7 @@ def build_training_nb(v: dict):
         seg_note = """
 **Masks:** this dataset has no polygons. Fake images get an ellipse on the letterboxed
 face crop; real images get an all-zero mask. Dice/IoU here are **not** comparable to
-compiled-poly OpenForensics.
+FaceForensics++ GT masks.
 """
     cells = [
         md(
@@ -124,7 +124,7 @@ compiled-poly OpenForensics.
 
 **Dataset:** [ahmedgamal/openforensics-wild-dataset](https://www.kaggle.com/datasets/ahmedgamal/openforensics-wild-dataset)
 
-This is **not** the compiled-poly OpenForensics study in `notebooks/`. Images are already
+This is **not** FaceForensics++ (`notebooks-ffpp/`). Images are already
 face crops. Labels are folder names (`Real` = 0, `Fake` = 1). Splits are official
 `Train` / `Validation` / `Test`.
 
@@ -1132,10 +1132,10 @@ else:
             f"""
 ## Notes
 
-- Official Wild split: Train / Validation / Test folders. Do not mix compiled-poly images into this run.
+- Official Wild split: Train / Validation / Test folders. Do not mix FaceForensics++ videos into this run.
 - First full run starts from ImageNet B7. Later runs attach **this notebook’s** latest output.
 - Smoke uses 64 images per class per split. `full` uses every image in those folders.
-- `{exp}` is **not** comparable to `notebooks/` compiled-poly runs (different images, no GT boxes).
+- `{exp}` is **not** comparable to FaceForensics++ (`notebooks-ffpp/`).
 - All four Wild notebooks must print the same `PROTOCOL_HASH` (`run_mode`, seed, size, threshold, epochs, batch, lr, lambdas).
 """
         ),
@@ -1161,14 +1161,15 @@ you only want that epoch-1 Test number.
 Attach:
 
 1. `ahmedgamal/openforensics-wild-dataset` (needed only when a CSV is missing)
-2. Each training notebook’s latest output (epoch-1 is fine)
+2. Each Wild training notebook’s latest output (epoch-1 is fine)
+3. Optional: the OpenForensics Full checkpoint `full_veritas_defacto_best.pt` (or `_last.pt`) from `OF_04_full` — used as the Full VERITAS **test** model on Wild Test when `full_veritas_wild` is missing
 
 Use **GPU T4** if any checkpoint must be scored. CSV-only compare can run on CPU.
 
 - `baseline_effb7_wild`
 - `multistream_no_seg_wild` (optional)
 - `seg_no_multistream_wild` (optional)
-- `full_veritas_wild`
+- `full_veritas_wild` (or `full_veritas_defacto` as the Full test model)
 """
         ),
         cd(
@@ -1236,6 +1237,14 @@ for exp in EXPECTED:
     ckpt_files[exp] = (lasts[0] if lasts else None) or (bests[0] if bests else None)
     print(exp, "predictions:", pred_files[exp])
     print(exp, "checkpoint:", ckpt_files[exp])
+
+if ckpt_files.get("full_veritas_wild") is None:
+    lasts = [p for p in find_files("full_veritas_defacto_last", ".pt") if p.name == "full_veritas_defacto_last.pt"]
+    bests = [p for p in find_files("full_veritas_defacto_best", ".pt") if p.name == "full_veritas_defacto_best.pt"]
+    alt = (lasts[0] if lasts else None) or (bests[0] if bests else None)
+    if alt is not None:
+        ckpt_files["full_veritas_wild"] = alt
+        print("Full VERITAS test model:", alt, "(full_veritas_defacto on Wild Test)")
 
 protocol_files = find_files("protocol", ".json")
 print("protocol files", [str(p) for p in protocol_files])
@@ -1726,7 +1735,7 @@ print("wrote", out_dir / "wild_statistical_tests.json")
 - If `PROTOCOL_HASH` differed, stop and rerun the mismatched notebook with the agreed CONFIG (`full`, seed 42, size 600).
 - Pairing is by `file_name` on the official Wild Test folder.
 - `miou_fake_only` / `dice_fake_only` exist only for the two segmentation variants, and they score **surrogate ovals**, not GT polygons.
-- This table is not comparable to `notebooks/VERITAS_05_compare.ipynb`.
+- This table is not comparable to FaceForensics++ (`notebooks-ffpp/FFPP_05_compare.ipynb`).
 """
         ),
     ]
