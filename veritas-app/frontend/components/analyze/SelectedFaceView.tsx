@@ -16,6 +16,12 @@ export function SelectedFaceView({ face, onBack }: SelectedFaceViewProps): React
   const crop = face.crop;
   const imgSrc = cropMask || crop || undefined;
 
+  // Real explainability asset from the model's segmentation output.
+  const binary = face.segmentation?.crop_binary ?? null;
+  const coverage = face.segmentation?.coverage;
+  const coveragePct =
+    typeof coverage === "number" ? Math.round(coverage * 1000) / 10 : null;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -112,6 +118,32 @@ export function SelectedFaceView({ face, onBack }: SelectedFaceViewProps): React
         <span className="w-4 h-4 rounded" style={{ backgroundColor: "#FFE9E9", border: "1px solid #FF3131" }} />
         <span className="text-xs text-muted">Predicted fake / mask overlay</span>
       </div>
+
+      {/* Explainability — only for fake faces, using the model's real segmentation output */}
+      {isFake && binary && (
+        <div className="mt-6 border-t border-border pt-5">
+          <h3 className="text-base font-bold text-navy">Explainability</h3>
+          <p className="text-xs text-muted mt-0.5">
+            Segmentation mask for Face {face.face_id}
+            {coveragePct !== null ? ` · ${coveragePct}% of the face flagged` : ""}
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-[1fr_1.2fr] gap-4 items-start">
+            <figure className="m-0">
+              <img src={binary} alt="predicted binary mask" className="rounded-lg w-full object-contain bg-black" />
+              <figcaption className="text-[11px] font-semibold text-navy mt-1.5">Predicted binary mask</figcaption>
+            </figure>
+
+            <div className="text-xs text-muted leading-relaxed">
+              <p className="font-semibold text-navy mb-1">How to read this</p>
+              <p>
+                White areas mark the pixels the model localized as manipulated. The larger and more
+                concentrated the region, the stronger the evidence of tampering in that part of the face.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

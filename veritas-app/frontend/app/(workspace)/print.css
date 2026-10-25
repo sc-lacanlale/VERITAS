@@ -123,6 +123,26 @@
   margin-right: 8px;
 }
 
+.pr-image-block {
+  margin: 0 0 16px 0;
+}
+
+.pr-overlay-img {
+  display: block;
+  max-width: 3.2in;
+  max-height: 2.2in;
+  width: auto;
+  height: auto;
+  border: 1px solid #dadada;
+  border-radius: 6px;
+}
+
+.pr-image-caption {
+  font-size: 10px;
+  color: #75787d;
+  margin: 4px 0 0 0;
+}
+
 .pr-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -159,6 +179,11 @@
   font-size: 13px;
   color: #142849;
   margin: 0;
+}
+
+.pr-summary-line {
+  display: block;
+  margin: 0 0 4px 0;
 }
 
 .pr-table {

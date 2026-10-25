@@ -30,14 +30,22 @@ export function AnalysisResults({
 
   const overlaySrc = result.overlay_image || undefined;
 
+  // Real stage telemetry reported by the backend for this image.
+  const stages = result.stages;
+
   // Brief loading state (~450ms) when switching between faces / back to full image
   function runWithTransition(action: () => void, scroll = false): void {
     setTransitioning(true);
     action();
     if (scroll && typeof window !== "undefined" && window.innerWidth < 1024) {
-      requestAnimationFrame(() => {
-        imagePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      // Scroll the selected-face panel to the top. Use the element's own
+      // scrollIntoView (finds the correct scroll container automatically) and
+      // run it a couple of times as layout settles so it lands reliably. The
+      // panel's `scroll-mt-20` keeps it clear of the fixed top bar.
+      const doScroll = () => imagePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      requestAnimationFrame(doScroll);
+      window.setTimeout(doScroll, 120);
+      window.setTimeout(doScroll, 500); // after the transition swap completes
     }
     window.setTimeout(() => setTransitioning(false), 450);
   }
@@ -54,6 +62,27 @@ export function AnalysisResults({
         <h1 className="text-3xl font-extrabold text-navy tracking-[-0.002rem] text-left">Analysis Results</h1>
         <p className="text-sm text-muted mt-1 text-left">Review each detected face and select one to inspect its result.</p>
       </div>
+
+      {/* Real processing summary — reflects what the pipeline actually did */}
+      {stages && result.faces.length > 0 && (
+        <div className="bg-white border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SummaryStat
+            icon="/icons/icon clock.svg"
+            label="Processing time"
+            value={`${stages.inference.ms} ms`}
+          />
+          <SummaryStat
+            icon="/icons/icon face-id.svg"
+            label="Faces detected"
+            value={String(stages.face_detection.faces_detected)}
+          />
+          <SummaryStat
+            icon="/icons/icon circle-check.svg"
+            label="Status"
+            value="Analysis complete"
+          />
+        </div>
+      )}
 
       {result.faces.length === 0 ? (
         <div className="bg-white border border-border rounded-xl p-8 text-center">
@@ -148,6 +177,28 @@ export function AnalysisResults({
           onClose={() => setReportOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+function SummaryStat({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}): React.ReactElement {
+  return (
+    <div className="flex items-center gap-3 rounded-xl px-4 py-3">
+      <div className="w-10 h-10 rounded-lg bg-[#ECF4FE] flex items-center justify-center flex-shrink-0">
+        <img src={icon} alt="" width={20} height={20} className="object-contain" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] text-muted leading-tight">{label}</p>
+        <p className="text-sm font-bold text-navy leading-tight mt-0.5 truncate">{value}</p>
+      </div>
     </div>
   );
 }

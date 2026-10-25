@@ -47,6 +47,13 @@ MODEL_CONFIG = {
     "classification_threshold": 0.5,
     "mask_threshold": 0.5,
     "face_score_threshold": 0.5,
+    # Face-quality gate: a face must clear these to be analyzable. These are real,
+    # measurable signals from the detector output (confidence + bbox geometry).
+    # - quality_min_confidence: detector score below this = "not clear enough".
+    # - quality_min_face_frac: face's larger side must be >= this fraction of the
+    #   image's larger side, else the face is too small/obscured to analyze.
+    "quality_min_confidence": float(os.environ.get("FACE_QUALITY_MIN_CONF", 0.60)),
+    "quality_min_face_frac": float(os.environ.get("FACE_QUALITY_MIN_FRAC", 0.08)),
     "multi_stream": True,
     "segmentation": True,
     # Wild-only DeepLab was an oval surrogate. OpenForensics Full used GT masks — show them.

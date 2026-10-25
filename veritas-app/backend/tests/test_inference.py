@@ -96,6 +96,10 @@ def test_mixed_real_fake_faces():
     assert out["faces"][0]["segmentation"]["mask"] is None
     assert out["faces"][1]["segmentation"]["mask"]
     assert out["faces"][1]["segmentation"]["available"] is True
+    # Fake face gets the real binary mask; real face does not.
+    assert out["faces"][1]["segmentation"]["crop_binary"]
+    assert out["faces"][1]["segmentation"]["coverage"] > 0
+    assert out["faces"][0]["segmentation"]["crop_binary"] is None
 
 
 def test_no_faces():
@@ -139,6 +143,82 @@ def test_invalid_image_api(monkeypatch):
     client = TestClient(appmod.app)
     r = client.post("/predict", files={"image": ("x.txt", b"not-an-image", "text/plain")})
     assert r.status_code == 400
+
+
+def test_streaming_generator_stage_order():
+    geo = GeometryTransform(320, 0.1)
+    pred = VeritasInference(FakeModel(), "cpu", geo, 0.5, 0.5)
+    faces = [
+        {"face_id": 0, "bbox": [10, 10, 80, 90], "confidence": 0.9},
+        {"face_id": 1, "bbox": [120, 20, 200, 110], "confidence": 0.95},
+    ]
+    events = list(pred.predict_image_streaming(_rgb(), faces))
+    names = [name for name, _ in events]
+    assert names == ["face_detection", "preprocessing", "inference", "explainability", "result"]
+    final = events[-1][1]
+    assert len(final["faces"]) == 2
+    assert final["stages"]["face_detection"]["faces_detected"] == 2
+    assert final["stages"]["inference"]["faces_scored"] == 2
+
+
+def test_assess_faces_quality_gate():
+    geo = GeometryTransform(320, 0.1)
+    pred = VeritasInference(
+        FakeModel(), "cpu", geo, 0.5, 0.5,
+        quality_min_confidence=0.6, quality_min_face_frac=0.08,
+    )
+    img = _rgb(400, 300)  # larger side = 400
+    # No faces at all.
+    assert pred.assess_faces(img, [])["status"] == "none"
+    # A good, large, confident face.
+    good = [{"face_id": 0, "bbox": [10, 10, 150, 150], "confidence": 0.95}]
+    out = pred.assess_faces(img, good)
+    assert out["status"] == "ok"
+    assert len(out["faces"]) == 1
+    # Low confidence -> low_quality status, but the face is STILL analyzed.
+    low_conf = [{"face_id": 0, "bbox": [10, 10, 150, 150], "confidence": 0.3}]
+    out = pred.assess_faces(img, low_conf)
+    assert out["status"] == "low_quality"
+    assert len(out["faces"]) == 1
+    # Tiny face -> low_quality status, but still analyzed (never dropped).
+    tiny = [{"face_id": 0, "bbox": [10, 10, 30, 30], "confidence": 0.95}]
+    out = pred.assess_faces(img, tiny)
+    assert out["status"] == "low_quality"
+    assert len(out["faces"]) == 1
+
+
+def test_streaming_generator_no_faces():
+    geo = GeometryTransform(320, 0.1)
+    pred = VeritasInference(FakeModel(), "cpu", geo, 0.5, 0.5)
+    events = list(pred.predict_image_streaming(_rgb(), []))
+    names = [name for name, _ in events]
+    assert names == ["face_detection", "result"]
+    assert events[-1][1]["faces"] == []
+
+
+def test_stream_endpoint_emits_sse(monkeypatch):
+    import app as appmod
+
+    appmod.STATE["ready"] = True
+    appmod.STATE["detector"] = ScriptedDetector(
+        [
+            {"face_id": 0, "bbox": [10, 10, 80, 90], "confidence": 0.91},
+            {"face_id": 1, "bbox": [100, 20, 180, 110], "confidence": 0.88},
+        ]
+    )
+    appmod.STATE["predictor"] = VeritasInference(
+        FakeModel(), "cpu", GeometryTransform(64, 0.1), 0.5, 0.5
+    )
+    client = TestClient(appmod.app)
+    buf = io.BytesIO()
+    Image.fromarray(_rgb()).save(buf, format="JPEG")
+    r = client.post("/predict/stream", files={"image": ("t.jpg", buf.getvalue(), "image/jpeg")})
+    assert r.status_code == 200
+    assert "text/event-stream" in r.headers["content-type"]
+    body = r.text
+    assert "event: stage" in body
+    assert "face_detection" in body
+    assert "event: result" in body
 
 
 def test_api_response_schema(monkeypatch):

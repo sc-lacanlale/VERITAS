@@ -15,6 +15,7 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
   const timestamp = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
   const fakeCount = result.faces.filter((f) => f.classification.label === "fake").length;
   const firstFace = result.faces[0];
+  const inferenceMs = result.stages?.inference.ms ?? null;
 
   return (
     <div id="print-report" className="print-report">
@@ -41,6 +42,12 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
 
       {/* 01 Metadata */}
       <h2 className="pr-section"><span className="pr-num">01</span> CASE &amp; IMAGE METADATA</h2>
+      {result.overlay_image && (
+        <div className="pr-image-block">
+          <img src={result.overlay_image} alt="input image with detected faces" className="pr-overlay-img" />
+          <p className="pr-image-caption">Input image with detected faces</p>
+        </div>
+      )}
       <div className="pr-grid">
         <div>
           <p className="pr-label">SOURCE FILE</p>
@@ -55,6 +62,10 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
           <p className="pr-value">{result.faces.length}</p>
         </div>
         <div>
+          <p className="pr-label">PROCESSING TIME</p>
+          <p className="pr-value">{inferenceMs !== null ? `${inferenceMs} ms` : "—"}</p>
+        </div>
+        <div>
           <p className="pr-label">FACE DETECTOR</p>
           <p className="pr-value">{result.detector ?? "—"}</p>
         </div>
@@ -66,16 +77,20 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
       <h2 className="pr-section"><span className="pr-num">02</span> ANALYSIS SUMMARY</h2>
       <div className="pr-callout">
         <p className="pr-callout-title">
+          {result.faces.length} face{result.faces.length === 1 ? "" : "s"} analyzed
+          {" — "}
           {fakeCount > 0
-            ? `${fakeCount} face${fakeCount > 1 ? "s" : ""} classified as manipulated.`
-            : "No faces classified as manipulated."}
+            ? `${fakeCount} classified as manipulated, ${result.faces.length - fakeCount} authentic.`
+            : "all classified as authentic."}
         </p>
-        {firstFace && (
-          <p className="pr-callout-body">
-            Face {firstFace.face_id} classified as {firstFace.classification.label.toUpperCase()},
-            with a model score of {firstFace.classification.fake_probability.toFixed(3)}.
-          </p>
-        )}
+        <div className="pr-callout-body">
+          {result.faces.map((f) => (
+            <p key={f.face_id} className="pr-summary-line" style={{ display: "block", margin: "0 0 4px 0" }}>
+              Face {f.face_id}: {f.classification.label.toUpperCase()} (model score{" "}
+              {f.classification.fake_probability.toFixed(3)})
+            </p>
+          ))}
+        </div>
       </div>
 
       <hr className="pr-rule" />

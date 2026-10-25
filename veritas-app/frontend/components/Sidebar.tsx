@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface NavItem {
   label: string;
@@ -44,13 +44,30 @@ const NAV: NavItem[] = [
     ),
   },
   {
-    label: "Samples",
-    href: "/samples",
+    label: "Preprocessing",
+    href: "/preprocessing",
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <polyline points="21 15 16 10 5 21" />
+      // Photo-scan: an image framed by scan corner brackets
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 8V6a2 2 0 0 1 2-2h2" />
+        <path d="M16 4h2a2 2 0 0 1 2 2v2" />
+        <path d="M20 16v2a2 2 0 0 1-2 2h-2" />
+        <path d="M8 20H6a2 2 0 0 1-2-2v-2" />
+        <circle cx="9.5" cy="10" r="1.2" />
+        <path d="M7.5 15.5 10 13l2 2 2.5-2.5 2 2" />
+      </svg>
+    ),
+  },
+  {
+    label: "Training",
+    href: "/training",
+    icon: (
+      // Adjustments-horizontal: two sliders
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="4" y1="8" x2="20" y2="8" />
+        <line x1="4" y1="16" x2="20" y2="16" />
+        <circle cx="9" cy="8" r="2.2" />
+        <circle cx="15" cy="16" r="2.2" />
       </svg>
     ),
   },
@@ -97,6 +114,13 @@ function NavLinks({ onClose }: { onClose?: () => void }) {
 
 export function Sidebar(): React.ReactElement {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close the mobile menu whenever the route changes, so it never lingers
+  // open after navigating to another page.
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   return (
     <>

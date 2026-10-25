@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -10,6 +11,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from PIL import Image, UnidentifiedImageError
 
 from config import MODEL_CONFIG
@@ -63,6 +65,8 @@ def startup():
             MODEL_CONFIG["classification_threshold"],
             MODEL_CONFIG["mask_threshold"],
             emit_masks=MODEL_CONFIG.get("emit_masks", True),
+            quality_min_confidence=MODEL_CONFIG.get("quality_min_confidence", 0.0),
+            quality_min_face_frac=MODEL_CONFIG.get("quality_min_face_frac", 0.0),
         )
         STATE["detector"] = build_face_detector(MODEL_CONFIG["face_score_threshold"], cache)
         STATE["ready"] = True
@@ -89,8 +93,8 @@ def health():
     }
 
 
-@app.post("/predict")
-async def predict(image: UploadFile = File(...)):
+async def _validate_upload(image: UploadFile) -> bytes:
+    """Shared upload validation for both /predict and /predict/stream."""
     if not STATE["ready"]:
         raise HTTPException(status_code=503, detail=STATE.get("error") or "MODEL_NOT_CONFIGURED")
     name = (image.filename or "").lower()
@@ -105,16 +109,85 @@ async def predict(image: UploadFile = File(...)):
     ctype = (image.content_type or "").split(";")[0].strip().lower()
     if ctype and ctype not in MODEL_CONFIG["allowed_mimes"] and ctype != "application/octet-stream":
         raise HTTPException(status_code=400, detail=f"MIME type not allowed: {ctype}")
+    return data
+
+
+@app.post("/predict")
+async def predict(image: UploadFile = File(...)):
+    data = await _validate_upload(image)
     try:
         rgb = _decode_image(data)
-        faces = STATE["detector"].detect(rgb)
-        result = STATE["predictor"].predict_image(rgb, faces)
+        detected = STATE["detector"].detect(rgb)
+        assessment = STATE["predictor"].assess_faces(rgb, detected)
+        # Only analyze faces that clear the quality gate.
+        result = STATE["predictor"].predict_image(rgb, assessment["faces"])
         result["detector"] = STATE["detector"].name
+        result["detection"] = {
+            "status": assessment["status"],  # ok | none | low_quality
+            "detected": len(detected),
+            "analyzable": len(assessment["faces"]),
+        }
         return result
     except HTTPException:
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Inference failed")
+
+
+@app.post("/predict/stream")
+async def predict_stream(image: UploadFile = File(...)):
+    """Server-Sent Events variant of /predict.
+
+    Emits one event per real pipeline stage so the UI can show each step
+    going active -> done in real time. The final 'result' event carries the
+    exact same payload as /predict. The one-shot /predict is untouched.
+    """
+    data = await _validate_upload(image)
+
+    def sse(event: str, payload: dict) -> str:
+        return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+    def generate():
+        try:
+            rgb = _decode_image(data)
+        except HTTPException as e:
+            yield sse("error", {"detail": e.detail})
+            return
+        except Exception:
+            yield sse("error", {"detail": "Could not read image"})
+            return
+
+        try:
+            # Report detection as its own live stage.
+            yield sse("stage", {"name": "face_detection", "status": "active"})
+            detected = STATE["detector"].detect(rgb)
+            detector_name = STATE["detector"].name
+            assessment = STATE["predictor"].assess_faces(rgb, detected)
+            detection_meta = {
+                "status": assessment["status"],  # ok | none | low_quality
+                "detected": len(detected),
+                "analyzable": len(assessment["faces"]),
+            }
+
+            for stage, payload in STATE["predictor"].predict_image_streaming(rgb, assessment["faces"]):
+                if stage == "face_detection":
+                    # Carry the real quality verdict on the detection stage.
+                    payload = {**payload, **detection_meta}
+                    yield sse("stage", {"name": stage, "status": "done", "data": payload})
+                elif stage == "result":
+                    payload["detector"] = detector_name
+                    payload["detection"] = detection_meta
+                    yield sse("result", payload)
+                else:
+                    yield sse("stage", {"name": stage, "status": "done", "data": payload})
+        except Exception:
+            yield sse("error", {"detail": "Inference failed"})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 if __name__ == "__main__":

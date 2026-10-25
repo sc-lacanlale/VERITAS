@@ -15,6 +15,8 @@ export function SummaryReportModal({
   onClose,
 }: SummaryReportModalProps): React.ReactElement {
   const timestamp = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const inferenceMs = result.stages?.inference.ms ?? null;
+  const fakeCount = result.faces.filter((f) => f.classification.label === "fake").length;
 
   function handlePrint(): void {
     window.print();
@@ -58,14 +60,28 @@ export function SummaryReportModal({
         </div>
 
         <div className="p-6 flex flex-col gap-6">
-          {/* Metadata */}
+          {/* Metadata + annotated image */}
           <div>
             <h3 className="text-sm font-bold text-navy mb-3">Case &amp; Image Metadata</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <MetaBox label="File Name" value={fileName} />
-              <MetaBox label="Dimensions" value={`${result.image.width}×${result.image.height}`} />
-              <MetaBox label="Faces Detected" value={String(result.faces.length)} />
-              <MetaBox label="Detector" value={result.detector ?? "—"} />
+            <div className="flex flex-col lg:flex-row gap-4 items-start">
+              {result.overlay_image && (
+                <figure className="m-0 w-full lg:w-[44%] flex-shrink-0">
+                  <img
+                    src={result.overlay_image}
+                    alt="input image with detected faces"
+                    className="rounded-lg w-full object-contain border border-border"
+                  />
+                  <figcaption className="text-[11px] text-muted mt-1.5">Input image with detected faces</figcaption>
+                </figure>
+              )}
+              <div className="grid grid-cols-2 gap-3 flex-1 w-full">
+                <MetaBox label="File Name" value={fileName} />
+                <MetaBox label="Dimensions" value={`${result.image.width}×${result.image.height}`} />
+                <MetaBox label="Faces Detected" value={String(result.faces.length)} />
+                <MetaBox label="Processing time" value={inferenceMs !== null ? `${inferenceMs} ms` : "—"} />
+                <MetaBox label="Flagged as manipulated" value={String(fakeCount)} />
+                <MetaBox label="Detector" value={result.detector ?? "—"} />
+              </div>
             </div>
           </div>
 

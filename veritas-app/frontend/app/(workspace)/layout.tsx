@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "VERITAS Workspace",
+  title: "VERITAS",
   description: "Facial manipulation detection and localization",
 };
 
