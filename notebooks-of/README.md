@@ -16,4 +16,15 @@ Regenerate: `python make_defacto_notebook.py`
 
 The app loads `models/full_veritas_defacto_best.zip` from `OF_04_full`. See `APP_SETUP.md`.
 
-`WILD_05_compare.ipynb` can attach `full_veritas_defacto_best.pt` and score official Wild Test with that Full model.
+## Test the 3-epoch Full model (`OF_05_compare`)
+
+1. Import `OF_05_compare.ipynb` into a **new GPU T4** notebook.
+2. Attach `full_veritas_defacto_best.pt` or `.zip` (OF_04 output, or upload the zip as a dataset).
+3. Attach one or more test dumps. The notebook auto-detects:
+   - OpenForensics Wild (`Dataset/Test/Real` + `Fake`)
+   - DEFACTO Face (`swapping_img` / `morphing_img` / `reference`)
+   - FaceForensics++ (`original_sequences` + `manipulated_sequences`, or `youtube` + `Deepfakes`/…)
+   - ForgeryNet-style or any `Test/Real`+`Test/Fake` or `Test/0_real`+`1_fake`
+4. Run All. Each set prints accuracy / F1 (labels only). Dice only if `probe_mask` exists.
+
+`WILD_05_compare.ipynb` can still attach the same Full checkpoint and score official Wild Test only.

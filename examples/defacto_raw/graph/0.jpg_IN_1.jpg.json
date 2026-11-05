@@ -1,0 +1,19 @@
+[
+    {
+        "State": 0,
+        "Name": "Ground Truth",
+        "Property": {
+            "Path": "actors/1.jpg"
+        }
+    },
+    {
+        "State": 1,
+        "Name": "Face Morph",
+        "Property": {
+            "External face": "0.jpg",
+            "Target face": "1.jpg",
+            "Alpha": "0.5",
+            "Mask": "donor_mask/0.jpg_IN_1.jpg"
+        }
+    }
+]
