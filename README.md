@@ -15,6 +15,7 @@ Four EfficientNet-B7 variants, one experiment per notebook, face-crop level:
 | --- | --- | --- |
 | OpenForensics Wild | `notebooks-wild/` | `WILD_01` … `WILD_05` |
 | OpenForensics Full (GT-mask) | `notebooks-of/` | `OF_01` … `OF_05` |
+| Wild + generated masks | `notebooks-ow/` | `OW_00` … `OW_05` |
 
 Wild B0 capacity check: `notebooks-wild-b0/`.
 
@@ -28,9 +29,11 @@ Kaggle steps: **`KAGGLE_RUN_GUIDE.md`**. `WILD_05_compare` can attach the Full (
 | --- | --- |
 | `notebooks-wild/` | Wild B7 ablations + compare |
 | `notebooks-of/` | OpenForensics Full B7 ablations + compare |
+| `notebooks-ow/` | Paint a mask for every Wild image, then train on those masks |
 | `notebooks-wild-b0/` | Wild EfficientNet-B0 baseline |
 | `make_wild_notebook.py` | Regenerates Wild notebooks |
 | `make_defacto_notebook.py` | Regenerates `notebooks-of/` |
+| `make_ow_notebooks.py` | Regenerates `notebooks-ow/` |
 | `split_group_notebooks.py` | Regenerates both |
 | `KAGGLE_RUN_GUIDE.md` | Kaggle instructions |
 | `APP_SETUP.md` | Run the inference app |

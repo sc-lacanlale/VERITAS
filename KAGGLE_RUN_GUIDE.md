@@ -3,9 +3,10 @@
 Two studies, two notebook folders. Pick **one** study per training session.
 
 | Study | Import from | Attach | Experiment names |
-| --- | --- | --- | --- |
+| --- | --- | --- | --- | --- |
 | OpenForensics Wild | `notebooks-wild/` | `ahmedgamal/openforensics-wild-dataset` | `*_wild` |
 | OpenForensics Full | `notebooks-of/` | `defactodataset/defactoface` and `ahmedgamal/openforensics-wild-dataset` | `*_defacto` (kept so existing checkpoints match) |
+| Wild with generated masks | `notebooks-ow/` | See that folder’s README. Paint masks first with `OW_00`, then train `OW_01`–`OW_04`. | `*_ow` |
 
 Wild B0: `notebooks-wild-b0/WILD_B0_01_baseline.ipynb`.
 
