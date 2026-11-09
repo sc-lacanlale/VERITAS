@@ -946,7 +946,7 @@ The crop is the box stored in `index.csv` (the box the mask was painted on).
 
 1. New GPU notebook. Do not import this into an OF or WILD training session.
 2. Dataset `ahmedgamal/openforensics-wild-dataset`.
-3. The finished `OW_00` output (every shard, if `shard_count` was more than 1). The folder must contain `ow_masks/index.csv` and `ow_masks/masks/`.
+3. The finished `OW_00` output. Kaggle shows that output as `_output_.zip`. This notebook reads `ow_masks/index.csv` and the mask PNGs inside that zip. A loose `ow_masks/` folder works too.
 4. On later epochs: this notebook’s own latest output (`{exp}_last.pt`).
 5. GPU T4, Internet On for the first run (ImageNet B7 download).
 
@@ -999,12 +999,14 @@ if torch.cuda.is_available():
             r"""
 import gc
 import hashlib
+import io
 import json
 import math
 import os
 import random
 import shutil
 import time
+import zipfile
 from pathlib import Path
 
 import cv2
@@ -1160,6 +1162,46 @@ def list_images(split_name: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+_MASK_COLS = {"image_id", "rel_key", "mask_file", "status", "crop_x0"}
+_ZIP_MEMBERS = {}
+
+
+def _take_index(df, label):
+    if not _MASK_COLS <= set(df.columns):
+        return None
+    print("mask index", label, "rows", len(df))
+    return df
+
+
+def _frames_from_zip(path: Path):
+    try:
+        zin = zipfile.ZipFile(path)
+    except Exception as e:
+        print("skip zip", path, e)
+        return []
+    names = zin.namelist()
+    indexes = [n for n in names if n.replace("\\", "/").rstrip("/").endswith("index.csv")]
+    frames = []
+    members = set(names)
+    for index_name in indexes:
+        try:
+            df = pd.read_csv(io.BytesIO(zin.read(index_name)), dtype=str)
+        except Exception as e:
+            print("skip", path, index_name, e)
+            continue
+        got = _take_index(df, f"{path} :: {index_name}")
+        if got is None:
+            continue
+        norm = index_name.replace("\\", "/")
+        prefix = norm[: norm.rfind("/") + 1] if "/" in norm else ""
+        got["_zip"] = str(path)
+        got["_zip_prefix"] = prefix
+        frames.append(got)
+        _ZIP_MEMBERS[str(path)] = members
+    zin.close()
+    return frames
+
+
 def load_mask_table() -> pd.DataFrame:
     frames = []
     roots = []
@@ -1169,26 +1211,34 @@ def load_mask_table() -> pd.DataFrame:
     seen = set()
     for root in roots:
         for dirpath, _, filenames in os.walk(root):
-            if "index.csv" not in filenames:
-                continue
-            path = Path(dirpath) / "index.csv"
-            key = str(path)
-            if key in seen:
-                continue
-            seen.add(key)
-            try:
-                df = pd.read_csv(path, dtype=str)
-            except Exception as e:
-                print("skip", path, e)
-                continue
-            if not {"image_id", "rel_key", "mask_file", "status", "crop_x0"} <= set(df.columns):
-                continue
-            df["_root"] = str(path.parent)
-            frames.append(df)
-            print("mask index", path, "rows", len(df))
+            if "index.csv" in filenames:
+                path = Path(dirpath) / "index.csv"
+                key = str(path)
+                if key not in seen:
+                    seen.add(key)
+                    try:
+                        df = pd.read_csv(path, dtype=str)
+                    except Exception as e:
+                        print("skip", path, e)
+                        df = None
+                    if df is not None:
+                        got = _take_index(df, path)
+                        if got is not None:
+                            got["_root"] = str(path.parent)
+                            frames.append(got)
+            for fn in filenames:
+                if not fn.lower().endswith(".zip"):
+                    continue
+                path = Path(dirpath) / fn
+                key = str(path)
+                if key in seen:
+                    continue
+                seen.add(key)
+                frames.extend(_frames_from_zip(path))
     if not frames:
         raise FileNotFoundError(
-            "No ow_masks/index.csv found. Run OW_00_generate_masks and attach that notebook output."
+            "No ow_masks/index.csv found. Attach the finished OW_00 notebook. "
+            "Its Kaggle output is _output_.zip, and that zip must contain ow_masks/index.csv."
         )
     all_df = pd.concat(frames, ignore_index=True)
     kept = []
@@ -1197,10 +1247,20 @@ def load_mask_table() -> pd.DataFrame:
         iid = str(rec["image_id"])
         if iid in used or str(rec.get("status")) != "ok":
             continue
-        png = Path(str(rec["_root"])) / str(rec["mask_file"])
-        if not png.is_file():
-            continue
-        rec["mask_path"] = str(png)
+        zip_path = rec.get("_zip")
+        if isinstance(zip_path, str) and zip_path and zip_path.lower() != "nan":
+            prefix = rec.get("_zip_prefix")
+            prefix = "" if not isinstance(prefix, str) or prefix.lower() == "nan" else prefix
+            member = prefix + str(rec["mask_file"]).replace("\\", "/")
+            members = _ZIP_MEMBERS.get(zip_path)
+            if members is not None and member not in members:
+                continue
+            rec["mask_path"] = "zip:" + zip_path + "::" + member
+        else:
+            png = Path(str(rec["_root"])) / str(rec["mask_file"])
+            if not png.is_file():
+                continue
+            rec["mask_path"] = str(png)
         kept.append(rec)
         used.add(iid)
     if not kept:
@@ -1262,6 +1322,22 @@ def letterbox_rgb(image_rgb, size: int):
     return canvas
 
 
+_ZIP_HANDLES = {}
+
+
+def read_gray_mask(spec: str):
+    spec = str(spec)
+    if spec.startswith("zip:"):
+        zpath, member = spec[4:].split("::", 1)
+        zin = _ZIP_HANDLES.get(zpath)
+        if zin is None:
+            zin = zipfile.ZipFile(zpath)
+            _ZIP_HANDLES[zpath] = zin
+        data = np.frombuffer(zin.read(member), dtype=np.uint8)
+        return cv2.imdecode(data, cv2.IMREAD_GRAYSCALE)
+    return cv2.imread(spec, cv2.IMREAD_GRAYSCALE)
+
+
 class GeneratedMaskDataset(Dataset):
     def __init__(self, df: pd.DataFrame, size: int, augment: bool = False):
         self.df = df.reset_index(drop=True)
@@ -1286,7 +1362,7 @@ class GeneratedMaskDataset(Dataset):
             x0, y0 = max(0, x0), max(0, y0)
             x1, y1 = min(w, max(x0 + 1, x1)), min(h, max(y0 + 1, y1))
         crop = rgb[y0:y1, x0:x1]
-        mask = cv2.imread(str(row.mask_path), cv2.IMREAD_GRAYSCALE)
+        mask = read_gray_mask(row.mask_path)
         if mask is None:
             mask = np.zeros((self.size, self.size), dtype=np.uint8)
         if mask.shape != (self.size, self.size):
@@ -1784,7 +1860,7 @@ The mask is the Full model’s prediction on one face crop, threshold 0.5. It is
 | Notebook | Attach | Writes |
 | --- | --- | --- |
 | `OW_00_generate_masks.ipynb` | Wild dataset, `full_veritas_defacto_best.pt` or `.zip`, and this notebook’s previous output when resuming | `/kaggle/working/ow_masks/` |
-| `OW_01` … `OW_04` | Wild dataset, the finished `ow_masks` output, and that notebook’s own checkpoint on later epochs | `checkpoints/{experiment}_best.pt` and `_last.pt` |
+| `OW_01` … `OW_04` | Wild dataset, the finished `OW_00` notebook (Kaggle output `_output_.zip` or a loose `ow_masks/` folder), and that notebook’s own checkpoint on later epochs | `checkpoints/{experiment}_best.pt` and `_last.pt` |
 | `OW_05_compare.ipynb` | The `OW_01`–`OW_04` outputs | `ow_compare.csv` |
 
 Wild dataset: `ahmedgamal/openforensics-wild-dataset`.
