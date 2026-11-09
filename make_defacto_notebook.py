@@ -18,6 +18,9 @@ VARIANTS = [
         "segmentation": False,
         "legacy_baseline": True,
         "backbone": "efficientnet_b7",
+        "run_mode": "full",
+        "epochs_per_run": 3,
+        "classification_wild_only": False,
         "blurb": "RGB EfficientNet-B7, no multi-stream, no segmentation.",
     },
     {
@@ -105,6 +108,47 @@ The trunk is **EfficientNet-B7** (torchvision). Counted on this architecture wit
 """
 
 
+def resume_section(v: dict, exp: str, imagenet_note: str) -> str:
+    if v.get("legacy_baseline"):
+        return f"""
+## Finish this baseline
+
+The saved baseline completed **1 of 3** epochs, and that accuracy counted OpenForensics Wild only (3,990 images). The other three saved files completed 3 epochs and count the mixed test (6,000 images). This run finishes the remaining epochs and scores that same mixed test.
+
+This notebook resumes the 1e-4 checkpoint and trains the remaining epochs in one run. `run_mode` is already `full`.
+
+1. New GPU notebook. Import this file. Do **not** import it into a Wild training session or reuse the old 1.0 DEFACTO output.
+2. **Add Input → Datasets** → `defactodataset/defactoface` and `ahmedgamal/openforensics-wild-dataset`.
+3. **Add Input → Notebooks** → the successful baseline run whose progress file says `epochs_completed` 1. Use the 1e-4 run, not the 5e-5 or 2e-4 run.
+4. Settings → Accelerator → **GPU T4**. Internet On (first run downloads {imagenet_note}).
+5. Leave `learning_rate` at 1e-4. Save & Run All.
+6. The log must show `START OF RUN | {exp}: 1/3` and, when the run finishes, `END OF RUN | {exp}: 3/3`.
+
+The run stops itself at 11 hours and writes a mid-epoch checkpoint every 30 minutes. If it stops early, attach that output and run again. The classification row counts every test image: up to 2,000 reals, 2,000 DEFACTO fakes, and 2,000 Wild fakes.
+"""
+    return f"""
+## Attach (before Run All)
+
+1. New GPU notebook. Do **not** import this into a Wild training session or reuse the old 1.0 DEFACTO output.
+2. **Add Input → Datasets** → `defactodataset/defactoface` **and** `ahmedgamal/openforensics-wild-dataset`.
+3. Settings → Accelerator → **GPU T4**. Internet On (first run downloads {imagenet_note}), Persistence Files only.
+4. Set `run_mode: full`. One epoch is ~2–4 hours (DEFACTO fakes + Wild Real/Fake). Smoke is only a pipeline check.
+
+## One epoch per run
+
+Each Save & Run All trains **one** more epoch (`epochs_per_run: 1`), writes
+`checkpoints/{exp}_last.pt` and `_best.pt`, then scores official **Test**
+(`test_eval_when: always`) so you can stop after epoch 1. To score an already-saved
+epoch without training more: `"skip_training": True` and attach that run’s output.
+
+Between runs:
+
+1. Output → `logs/{exp}_training_progress.json` → `epochs_completed` went up by 1.
+2. **Add Input → Notebooks** → **this** notebook, latest **successful** version.
+3. Save & Run All. Log must say `START OF RUN | {exp}: N/3`.
+"""
+
+
 def build_training_nb(v: dict):
     exp = v["exp"]
     ms = "True" if v["multi_stream"] else "False"
@@ -122,6 +166,9 @@ def build_training_nb(v: dict):
         if v["segmentation"]:
             added.append("the DeepLabV3+ localization head")
         variant_line = "**What this notebook changes from the baseline:** " + " and ".join(added) + "."
+    run_mode = v.get("run_mode", "smoke")
+    epochs_per_run = int(v.get("epochs_per_run", 1))
+    wild_only = "True" if v.get("classification_wild_only", True) else "False"
     protocol_extra = ', "backbone"' if bb == "efficientnet_b0" else ""
     seg_note = ""
     if v["segmentation"]:
@@ -152,25 +199,7 @@ Do **not** mix Wild **checkpoints**. Do not attach the F1=1.0 DEFACTO-vs-Wild-Re
 {seg_note}
 {merge_note}
 
-## Attach (before Run All)
-
-1. New GPU notebook. Do **not** import this into a Wild training session or reuse the old 1.0 DEFACTO output.
-2. **Add Input → Datasets** → `defactodataset/defactoface` **and** `ahmedgamal/openforensics-wild-dataset`.
-3. Settings → Accelerator → **GPU T4**. Internet On (first run downloads {imagenet_note}), Persistence Files only.
-4. Set `run_mode: full`. One epoch is ~2–4 hours (DEFACTO fakes + Wild Real/Fake). Smoke is only a pipeline check.
-
-## One epoch per run
-
-Each Save & Run All trains **one** more epoch (`epochs_per_run: 1`), writes
-`checkpoints/{exp}_last.pt` and `_best.pt`, then scores official **Test**
-(`test_eval_when: always`) so you can stop after epoch 1. To score an already-saved
-epoch without training more: `"skip_training": True` and attach that run’s output.
-
-Between runs:
-
-1. Output → `logs/{exp}_training_progress.json` → `epochs_completed` went up by 1.
-2. **Add Input → Notebooks** → **this** notebook, latest **successful** version.
-3. Save & Run All. Log must say `START OF RUN | {exp}: N/3`.
+{resume_section(v, exp, imagenet_note)}
 """
         ),
         md(architecture_md(variant_line)),
@@ -288,7 +317,7 @@ print("children:", sorted(p.name for p in DEFACTO_ROOT.iterdir() if p.is_dir())[
         cd(
             f"""
 CONFIG: Dict[str, Any] = {{
-    "run_mode": "smoke",
+    "run_mode": "{run_mode}",
     "seed": 42,
     "backbone": "{bb}",
     "use_pretrained": True,
@@ -310,7 +339,8 @@ CONFIG: Dict[str, Any] = {{
     "resume_from_input": True,
     "time_budget_hours": 11.0,
     "multi_gpu": False,
-    "epochs_per_run": 1,
+    "epochs_per_run": {epochs_per_run},
+    "classification_wild_only": {wild_only},
     "mid_epoch_checkpoint_minutes": 30,
     "test_eval_when": "always",
     "experiment": "{exp}",
@@ -1651,7 +1681,7 @@ else:
     ckpt_best = WORKING / "checkpoints" / f"{EXP}_best.pt"
     if ckpt_best.exists():
         load_if_any(ckpt_best, MODEL)
-    metrics, recs = evaluate_loader(MODEL, TEST_LOADER, "test", classification_wild_only=True)
+    metrics, recs = evaluate_loader(MODEL, TEST_LOADER, "test", classification_wild_only=bool(CONFIG.get("classification_wild_only", True)))
     cls_keys = ("n_classification", "accuracy", "f1", "precision", "recall", "tp", "tn", "fp", "fn")
     seg_keys = ("dice", "miou", "dice_all", "iou_all", "miou_note")
     print("TEST classification (OpenForensics Wild only)", {k: metrics[k] for k in cls_keys if k in metrics})
@@ -1674,7 +1704,7 @@ else:
 ## Notes
 
 - Training uses the DEFACTO hybrid (DEFACTO Face + OpenForensics Wild).
-- **Test classification is Wild only.** Accuracy and F1 ignore DEFACTO reference, swap, and morph.
+- {("**Test classification counts the mixed test.** Up to 2,000 reals, 2,000 DEFACTO fakes, and 2,000 Wild fakes." if not v.get("classification_wild_only", True) else "**Test classification is Wild only.** Accuracy and F1 ignore DEFACTO reference, swap, and morph.")}
 - **Test segmentation is DEFACTO `probe_mask` only.** That restriction does not apply to localization. Wild fakes skip seg loss and dice.
 - Reals: DEFACTO `reference/` plus Wild **Real**. Class-balanced batches.
 - New protocol — do not resume the F1=1.0 DEFACTO-vs-Wild-Real checkpoint.
@@ -2932,7 +2962,7 @@ This notebook does **not** train. It scores two checkpoints on **OpenForensics W
    - Hybrid baseline: `OF_01_baseline` output `checkpoints/baseline_effb7_defacto_best.pt`
    - Hybrid Full VERITAS: `OF_04_full` output `full_veritas_defacto_best.pt` or `.zip`
 4. **Add Input → Datasets** → `ahmedgamal/openforensics-wild-dataset` only. Leave DEFACTO Face and FaceForensics off this run.
-5. Save & Run All. The log should show `openforensics_wild` only, then accuracy / F1 for both models.
+5. Save & Run All. The log must show `will score from checkpoint: ['baseline_effb7_defacto', 'full_veritas_defacto']`, then `SCORING` for both. An attached predictions CSV does not replace that score. The training CSV has no inference time.
 6. This notebook is the **classification** test. Segmentation dice stays on DEFACTO `probe_mask` in `OF_05_compare` and in each training notebook's Test cell. Wild has no mask, so dice is not computed here.
 """
     expected_old = '''EXPECTED = [
@@ -2964,11 +2994,42 @@ print("VERITAS file: full_veritas_defacto_best.pt or .zip")'''
             cell.source = intro.strip() + "\n"
         if expected_old in src:
             cell.source = src.replace(expected_old, expected_new)
+        if 'split_ok = p.name.lower() in {"test", "testing", "validation", "val", "test-challenge"}' in src:
+            cell.source = src.replace(
+                'split_ok = p.name.lower() in {"test", "testing", "validation", "val", "test-challenge"}',
+                'split_ok = p.name.lower() in {"test", "testing"}',
+                1,
+            )
+            src = cell.source
+        if "SCORE_EXPS = list(NEED_INFER)" in src:
+            cell.source = src.replace(
+                "SCORE_EXPS = list(NEED_INFER)\n"
+                "if ckpt_files.get(FULL) is not None and FULL not in SCORE_EXPS:\n"
+                "    SCORE_EXPS.append(FULL)\n",
+                "# The attached training output includes a predictions CSV. That file has no infer_ms\n"
+                "# and is not a fresh Wild Test score. Load both checkpoints and time them.\n"
+                "SCORE_EXPS = [e for e in EXPECTED if ckpt_files.get(e) is not None]\n"
+                "print(\"will score from checkpoint:\", SCORE_EXPS)\n",
+                1,
+            )
+            src = cell.source
+        if src.strip() == "## Score official Test from epoch-1 checkpoints (only if a CSV is missing)":
+            cell.source = (
+                "## Score Wild Test from both checkpoints\n\n"
+                "Both checkpoints are loaded even when the training output already contains a predictions CSV. "
+                "That CSV has no inference time.\n"
+            )
+            src = cell.source
         if "TEST_SETS = discover_test_sets()" in src and "openforensics_wild" not in src.split("TEST_SETS = discover_test_sets()")[1][:180]:
             cell.source = src.replace(
                 "TEST_SETS = discover_test_sets()\n",
                 "TEST_SETS = discover_test_sets()\n"
                 "TEST_SETS = [(n, df) for n, df in TEST_SETS if n == \"openforensics_wild\"]\n"
+                "if len(TEST_SETS) > 1:\n"
+                "    print(\"WARNING: more than one Wild Test folder. Scoring the first only.\")\n"
+                "    for _n, _df in TEST_SETS:\n"
+                "        print(\" \", len(_df), _df[\"path\"].iloc[0] if len(_df) else \"\")\n"
+                "    TEST_SETS = TEST_SETS[:1]\n"
                 "print(\"scoring dataset: openforensics_wild only\", [n for n, _ in TEST_SETS])\n",
                 1,
             )
