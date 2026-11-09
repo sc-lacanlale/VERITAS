@@ -14,6 +14,10 @@ def _default_checkpoint() -> Path:
         return Path(env).expanduser()
     models = REPO_ROOT / "models"
     for candidate in (
+        # OW_04 output (OpenForensics Wild + generated masks) — the final Full model.
+        models / "full_veritas_ow_best.zip",
+        models / "full_veritas_ow_best.pt",
+        *sorted(models.glob("full_veritas_ow_best*.zip"), key=lambda p: p.stat().st_mtime, reverse=True),
         models / "full_veritas_defacto_best.zip",
         models / "full_veritas_defacto_best.pt",
         *sorted(models.glob("full_veritas_defacto_best*.zip"), key=lambda p: p.stat().st_mtime, reverse=True),
@@ -64,3 +68,35 @@ MODEL_CONFIG = {
     "allowed_suffixes": {".jpg", ".jpeg", ".png", ".webp"},
     "allowed_mimes": {"image/jpeg", "image/png", "image/webp"},
 }
+
+
+# --------------------------------------------------------------------------- #
+# Baseline (RGB EfficientNet-B7, classification only) — optional, for the     #
+# app's model selector. Looked up on every call so a checkpoint dropped into  #
+# models/ is picked up without a restart. Full VERITAS settings above are     #
+# unchanged.                                                                  #
+# --------------------------------------------------------------------------- #
+def baseline_checkpoint() -> Path | None:
+    env = os.environ.get("BASELINE_CHECKPOINT")
+    if env:
+        p = Path(env).expanduser()
+        return p if p.exists() else None
+    models = REPO_ROOT / "models"
+    for name in (
+        "baseline_effb7_ow_best.pt",
+        "baseline_effb7_ow_best.zip",
+        "baseline_effb7_defacto_best.pt",
+        "baseline_effb7_defacto_best.zip",
+    ):
+        if (models / name).exists():
+            return models / name
+    # Any other baseline_effb7*_best file (e.g. a Chrome "(1)" download). The Wild-only
+    # baseline is skipped on purpose: the notebooks say it is not the comparison baseline.
+    others = [
+        p
+        for p in models.glob("baseline_effb7*_best*")
+        if p.suffix.lower() in (".pt", ".zip") and "wild" not in p.name.lower() and "_repacked" not in p.name
+    ]
+    if others:
+        return max(others, key=lambda p: p.stat().st_mtime)
+    return None

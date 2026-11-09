@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { RouteLoader } from "@/components/ui/RouteLoader";
 import "./workspace.css";
 import "./print.css";
+import "./dark.css";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,6 +27,13 @@ export default function WorkspaceLayout({
       className={`${inter.variable} font-inter`}
       style={{ minHeight: "100vh", backgroundColor: "#F9FAFD" }}
     >
+      {/* Apply the saved theme before paint so dark mode doesn't flash light. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            "try{if(localStorage.getItem('veritas-theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}",
+        }}
+      />
       <RouteLoader />
       <Sidebar />
 

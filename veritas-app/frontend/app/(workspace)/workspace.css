@@ -16,6 +16,11 @@
   }
 }
 
+/* ── Page titles: left-aligned on every page (globals.css centers h1) ──── */
+.workspace-main h1 {
+  text-align: left;
+}
+
 /* ── Prevent text overflow in cards on all screens ──────────────────────── */
 .workspace-content * {
   word-break: break-word;
@@ -39,6 +44,29 @@
   }
 
   /* Workflow wraps naturally via flex-wrap */
+
+  /* Smaller type on phones */
+  .workspace-main h1 { font-size: 1.6rem !important; line-height: 1.2; }
+  .workspace-main h2 { font-size: 1rem !important; }
+
+  /* Overview split cards: compact so two fit side by side without breaking words */
+  .workspace-content .split-cards { gap: 10px !important; }
+  .workspace-content .split-cards > div { padding: 12px !important; gap: 6px !important; }
+  .workspace-content .split-cards > div > div:first-child { align-items: flex-start !important; }
+  .workspace-content .split-cards .w-9.h-9 { width: 28px !important; height: 28px !important; }
+  .workspace-content .split-cards .w-9.h-9 img { width: 18px !important; height: 18px !important; }
+  .workspace-content .split-cards .w-7.h-7 { width: 22px !important; height: 22px !important; }
+  .workspace-content .split-cards .w-7.h-7 img { width: 15px !important; height: 15px !important; }
+  .workspace-content .split-cards .title { font-size: 0.8rem !important; white-space: nowrap; }
+  .workspace-content .split-cards .text-sm { font-size: 0.75rem !important; }
+  .workspace-content .split-cards svg { width: 30px !important; height: 30px !important; flex-shrink: 0; }
+  .workspace-main .split-cards p.split-percentage { font-size: 22px !important; }
+  .workspace-content .split-cards .text-\[11px\] { font-size: 10px !important; line-height: 1.35; }
+}
+
+/* Very narrow phones: one split card per row */
+@media (max-width: 379px) {
+  .workspace-content .split-cards { grid-template-columns: 1fr !important; }
 }
 
 /* ── Tablet (640–1023px) ─────────────────────────────────────────────────── */

@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, useState, useMemo, useEffect } from "react";
-import type { AnalyzePhase, InlineError, StageDetailMap, StageStateMap, StepKey, StepStatus } from "@/app/(workspace)/analyze/page";
+import { useRef, useState, useEffect } from "react";
+import type { AnalyzePhase, BaselineStatus, InlineError, StageDetailMap, StageStateMap, StepKey, StepStatus } from "@/app/(workspace)/analyze/page";
+import type { ModelKey } from "@/types/veritas";
+import { ModelSelector } from "./ModelSelector";
 
 interface UploadPanelProps {
   file: File | null;
@@ -14,7 +16,11 @@ interface UploadPanelProps {
   onDismissError: () => void;
   onFile: (file: File) => void;
   onAnalyze: () => void;
+  modelKey: ModelKey;
+  onModelChange: (model: ModelKey) => void;
+  baseline: BaselineStatus;
 }
+
 
 interface PipelineStep {
   key: StepKey;
@@ -28,21 +34,27 @@ const PIPELINE_STEPS: PipelineStep[] = [
   { key: "face_detection", n: 2, title: "Face detection", desc: "Detect and crop face region(s)." },
   { key: "preprocessing", n: 3, title: "Preprocessing", desc: "Align, normalize and prepare input." },
   { key: "inference", n: 4, title: "Model inference", desc: "Run the trained model for detection and segmentation." },
-  { key: "explainability", n: 5, title: "Explainability map", desc: "Generate the Grad-XMage attribution map." },
+  { key: "explainability", n: 5, title: "Localization map", desc: "Generate the segmentation mask of the manipulated region." },
 ];
 
-export function UploadPanel({ file, busy, phase, stageStates, stageDetails, error, inlineError, onDismissError, onFile, onAnalyze }: UploadPanelProps): React.ReactElement {
+export function UploadPanel({ file, busy, phase, stageStates, stageDetails, error, inlineError, onDismissError, onFile, onAnalyze, modelKey, onModelChange, baseline }: UploadPanelProps): React.ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  // Preview derived from the validated `file` prop set by the parent.
-  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  // Preview of the validated `file`. Created inside the effect (not useMemo) so a
+  // remount — e.g. re-running the same image with another model — always gets a
+  // fresh URL instead of one that was already revoked.
+  const [preview, setPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
-  }, [preview]);
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   /**
    * Real per-step state comes straight from live server stage events.
@@ -77,6 +89,16 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
     : 0;
   const activeIndex = activeStep ? PIPELINE_STEPS.indexOf(activeStep) : -1;
   const headerLine = activeStep ? activeStep.title : "Analyzing image";
+
+  const isBaseline = modelKey === "baseline";
+  // Step descriptions follow the selected model so the pipeline stays truthful.
+  function stepDesc(step: PipelineStep): string {
+    if (!isBaseline) return step.desc;
+    if (step.key === "inference") return "Run the baseline model for real/fake classification.";
+    return step.desc;
+  }
+  // The localization step does not exist for the baseline (no segmentation head).
+  const isOff = (step: PipelineStep): boolean => isBaseline && step.key === "explainability";
 
   return (
     <div className="flex flex-col gap-6 font-inter w-full">
@@ -207,9 +229,9 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
             </div>
           )}
 
-          {/* Progress bar while analyzing */}
+          {/* Progress bar while analyzing — mobile only; on desktop the Processing Status panel sits beside it */}
           {busy && (
-            <div className="mt-4 border border-border rounded-xl bg-white p-3 flex items-center gap-3">
+            <div className="lg:hidden mt-4 border border-border rounded-xl bg-white p-3 flex items-center gap-3">
               <div className="relative w-6 h-6 flex-shrink-0">
                 <div className="absolute inset-0 rounded-full border-2 border-[#E5E7EB]" />
                 <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-brand animate-spin" />
@@ -230,6 +252,9 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
               </div>
             </div>
           )}
+
+          {/* Model selector */}
+          <ModelSelector value={modelKey} onChange={onModelChange} baseline={baseline} disabled={busy} />
 
           <div className="h-px bg-border my-5" />
 
@@ -266,12 +291,34 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
               ? `Live progress for ${file?.name ?? "image"}`
               : hasFailure
                 ? "The analysis could not be completed"
-                : "Steps performed after image upload"}
+                : `Steps performed after image upload · ${isBaseline ? "Baseline EfficientNet-B7" : "Full VERITAS"}`}
           </p>
 
           <div className="flex flex-col gap-5">
             {PIPELINE_STEPS.map((step, idx) => {
               const state = stepStateFor(idx);
+              if (isOff(step)) {
+                return (
+                  <div key={step.n} className="flex gap-3 relative">
+                    <div className="w-8 h-8 rounded-full border-2 border-dashed border-[#C9CDD5] flex items-center justify-center flex-shrink-0 z-10 bg-white">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A5AAB5" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-[#A5AAB5] line-through">{step.title}</p>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#F1F2F5] text-muted whitespace-nowrap">
+                          Not in Baseline
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#A5AAB5] leading-snug">
+                        No segmentation head, so no mask is generated.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
               // Show live statuses while busy, or whenever a failure is present.
               const showStatus = busy || hasFailure;
               const done = showStatus && state === "done";
@@ -343,7 +390,7 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
                         {status}
                       </p>
                     ) : (
-                      <p className="text-xs text-muted leading-snug">{step.desc}</p>
+                      <p className="text-xs text-muted leading-snug">{stepDesc(step)}</p>
                     )}
                   </div>
                 </div>

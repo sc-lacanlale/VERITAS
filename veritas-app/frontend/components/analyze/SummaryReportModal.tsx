@@ -17,6 +17,8 @@ export function SummaryReportModal({
   const timestamp = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
   const inferenceMs = result.stages?.inference.ms ?? null;
   const fakeCount = result.faces.filter((f) => f.classification.label === "fake").length;
+  const isBaseline = result.model?.key === "baseline";
+  const modelName = result.model?.name ?? "Full VERITAS";
 
   function handlePrint(): void {
     window.print();
@@ -78,9 +80,11 @@ export function SummaryReportModal({
                 <MetaBox label="File Name" value={fileName} />
                 <MetaBox label="Dimensions" value={`${result.image.width}×${result.image.height}`} />
                 <MetaBox label="Faces Detected" value={String(result.faces.length)} />
-                <MetaBox label="Processing time" value={inferenceMs !== null ? `${inferenceMs} ms` : "—"} />
+                <MetaBox label="Model inference time" value={inferenceMs !== null ? `${inferenceMs} ms` : "—"} />
                 <MetaBox label="Flagged as manipulated" value={String(fakeCount)} />
                 <MetaBox label="Detector" value={result.detector ?? "—"} />
+                <MetaBox label="Model" value={modelName} />
+                <MetaBox label="Checkpoint" value={result.model?.checkpoint ?? "—"} />
               </div>
             </div>
           </div>
@@ -119,7 +123,7 @@ export function SummaryReportModal({
                           </span>
                         </td>
                         <td className="px-4 py-3 text-muted text-xs">
-                          {isFake ? "Manipulated" : "Zero Mask"}
+                          {isBaseline ? "N/A (no mask)" : isFake ? "Manipulated" : "Zero Mask"}
                         </td>
                       </tr>
                     );

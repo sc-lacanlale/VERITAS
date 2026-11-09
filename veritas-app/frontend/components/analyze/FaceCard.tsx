@@ -20,19 +20,19 @@ export function FaceCard({ face, active, onClick }: FaceCardProps): React.ReactE
         ${active ? "border-brand bg-[#F4F6FF]" : "border-border bg-[#FAFBFD] hover:bg-[#F4F6FF]"}`}
     >
       {cropSrc && (
-        <img src={cropSrc} alt={`Face ${face.face_id}`} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+        <img src={cropSrc} alt={`Face ${face.face_id}`} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover flex-shrink-0" />
       )}
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-navy">Face {face.face_id}</span>
+      <div className="flex flex-col gap-1 flex-1" style={{ minWidth: 0 }}>
+        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
+          <span className="text-sm font-bold text-navy whitespace-nowrap">Face {face.face_id}</span>
           <span
-            className={`text-[11px] font-bold px-2 py-0.5 rounded-md
+            className={`text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap flex-shrink-0
               ${isFake ? "bg-[#FEEBEA] text-danger" : "bg-[#E9F5F1] text-positive"}`}
           >
             {isFake ? "FAKE" : "REAL"}
           </span>
         </div>
-        <span className="text-[11px] text-muted">Model score</span>
+        <span className="text-[11px] text-muted whitespace-nowrap">Model score</span>
         <span className="text-sm font-bold text-navy">
           {face.classification.fake_probability.toFixed(3)}
         </span>

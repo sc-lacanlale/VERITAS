@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { predictImageStream, type StreamStageName } from "@/lib/api";
-import type { PredictionResponse } from "@/types/veritas";
+import { fetchHealth, predictImageStream, type StreamStageName } from "@/lib/api";
+import type { ModelKey, PredictionResponse } from "@/types/veritas";
 import { UploadPanel } from "@/components/analyze/UploadPanel";
 import { AnalysisResults } from "@/components/analyze/AnalysisResults";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -20,6 +20,13 @@ interface NoticeState {
   title: string;
   message: string;
   iconSrc?: string;
+}
+
+/** Baseline availability as reported by the backend /health endpoint. */
+export interface BaselineStatus {
+  /** null = still checking (or backend unreachable). */
+  available: boolean | null;
+  checkpoint: string | null;
 }
 
 const NO_NOTICE: NoticeState = { open: false, tone: "info", title: "", message: "" };
@@ -108,6 +115,28 @@ export default function AnalyzePage(): React.ReactElement {
   const [stageDetails, setStageDetails] = useState<StageDetailMap>({});
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Which model to run. Full VERITAS stays the default.
+  const [modelKey, setModelKey] = useState<ModelKey>("veritas");
+  // Model used for the analysis currently on screen / in progress.
+  const [runModel, setRunModel] = useState<ModelKey>("veritas");
+  // Brief loading state when going from results back to a fresh upload.
+  const [resetting, setResetting] = useState(false);
+  const [baseline, setBaseline] = useState<BaselineStatus>({ available: null, checkpoint: null });
+
+  // Ask the backend whether a baseline checkpoint is present.
+  useEffect(() => {
+    let alive = true;
+    fetchHealth().then((h) => {
+      if (!alive) return;
+      setBaseline({
+        available: h?.baseline ? Boolean(h.baseline.available) : false,
+        checkpoint: h?.baseline?.checkpoint ?? null,
+      });
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const [notice, setNotice] = useState<NoticeState>(NO_NOTICE);
   const [inlineError, setInlineError] = useState<InlineError | null>(null);
@@ -126,6 +155,17 @@ export default function AnalyzePage(): React.ReactElement {
   }, []);
 
   useUnsavedGuard(hasWork, handleNavigateAttempt);
+
+  // Clicking "Analyze Image" in the sidebar while already here.
+  useEffect(() => {
+    function onSamePage(e: Event): void {
+      if (!hasWork) return; // nothing to lose: let the loader run
+      e.preventDefault();
+      setPendingHref("/analyze");
+    }
+    window.addEventListener("veritas:same-page", onSamePage);
+    return () => window.removeEventListener("veritas:same-page", onSamePage);
+  }, [hasWork]);
 
   // Returns null if valid, otherwise a short pipeline label + long modal message.
   function validateFile(f: File): { label: string; message: string } | null {
@@ -196,6 +236,7 @@ export default function AnalyzePage(): React.ReactElement {
         return `${n} face${n === 1 ? "" : "s"} scored · ${num("ms")} ms`;
       }
       case "explainability": {
+        if (data?.available === false) return "Not available for this model";
         const n = num("maps_generated");
         return n === 0 ? "No manipulated regions" : `${n} localization map${n === 1 ? "" : "s"}`;
       }
@@ -204,8 +245,10 @@ export default function AnalyzePage(): React.ReactElement {
     }
   }
 
-  async function handleAnalyze(): Promise<void> {
+  async function handleAnalyze(modelOverride?: ModelKey): Promise<void> {
     if (!file) return;
+    const model = modelOverride ?? modelKey;
+    setRunModel(model);
     setBusy(true);
     setStageStates({ ...INITIAL_STAGES });
     setStageDetails({});
@@ -272,13 +315,17 @@ export default function AnalyzePage(): React.ReactElement {
     const draining$ = drain();
 
     try {
-      const data = await predictImageStream(file, {
-        onStage: (evt) => {
-          if (evt.status === "done") {
-            pending.push({ name: evt.name, data: evt.data });
-          }
+      const data = await predictImageStream(
+        file,
+        {
+          onStage: (evt) => {
+            if (evt.status === "done") {
+              pending.push({ name: evt.name, data: evt.data });
+            }
+          },
         },
-      });
+        model
+      );
 
       // The stream has delivered everything; let the drain finish the queue.
       streamDone = true;
@@ -355,6 +402,16 @@ export default function AnalyzePage(): React.ReactElement {
     }
   }
 
+  // Re-run the same image with the other model (from the results view).
+  function rerunWith(model: ModelKey): void {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setModelKey(model);
+    setResult(null);
+    setSelectedId(null);
+    setPhase("idle");
+    void handleAnalyze(model);
+  }
+
   function reset(): void {
     setFile(null);
     setResult(null);
@@ -365,16 +422,32 @@ export default function AnalyzePage(): React.ReactElement {
     setInlineError(null);
   }
 
+  // "Analyze another image": show a short loader, then the fresh upload panel.
+  function startNewAnalysis(): void {
+    setResetting(true);
+    window.setTimeout(() => {
+      reset();
+      setResetting(false);
+      if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    }, 700);
+  }
+
   function confirmLeave(): void {
     const href = pendingHref;
     setPendingHref(null);
     reset();
+    if (href === "/analyze") {
+      // Already on this page: start fresh with the loader instead of navigating.
+      window.dispatchEvent(new Event("veritas:show-loader"));
+      return;
+    }
     if (href) router.push(href);
   }
 
   return (
     <>
       {phase === "preparing" && <LoadingOverlay label="Preparing results..." />}
+      {resetting && <LoadingOverlay label="Preparing a new analysis..." />}
 
       {result ? (
         <AnalysisResults
@@ -382,7 +455,10 @@ export default function AnalyzePage(): React.ReactElement {
           fileName={file?.name ?? "image.jpg"}
           selectedId={selectedId}
           onSelect={setSelectedId}
-          onReset={reset}
+          onReset={startNewAnalysis}
+          modelKey={result.model?.key ?? runModel}
+          baselineAvailable={baseline.available === true}
+          onRerunWith={rerunWith}
         />
       ) : (
         <UploadPanel
@@ -395,7 +471,10 @@ export default function AnalyzePage(): React.ReactElement {
           inlineError={inlineError}
           onDismissError={() => setInlineError(null)}
           onFile={handleFile}
-          onAnalyze={handleAnalyze}
+          onAnalyze={() => handleAnalyze()}
+          modelKey={busy ? runModel : modelKey}
+          onModelChange={setModelKey}
+          baseline={baseline}
         />
       )}
 

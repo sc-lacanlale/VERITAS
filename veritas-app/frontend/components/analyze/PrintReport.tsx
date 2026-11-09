@@ -16,6 +16,8 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
   const fakeCount = result.faces.filter((f) => f.classification.label === "fake").length;
   const firstFace = result.faces[0];
   const inferenceMs = result.stages?.inference.ms ?? null;
+  const isBaseline = result.model?.key === "baseline";
+  const modelName = result.model?.name ?? "Full VERITAS";
 
   return (
     <div id="print-report" className="print-report">
@@ -62,12 +64,16 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
           <p className="pr-value">{result.faces.length}</p>
         </div>
         <div>
-          <p className="pr-label">PROCESSING TIME</p>
+          <p className="pr-label">MODEL INFERENCE TIME</p>
           <p className="pr-value">{inferenceMs !== null ? `${inferenceMs} ms` : "—"}</p>
         </div>
         <div>
           <p className="pr-label">FACE DETECTOR</p>
           <p className="pr-value">{result.detector ?? "—"}</p>
+        </div>
+        <div>
+          <p className="pr-label">MODEL</p>
+          <p className="pr-value">{modelName}</p>
         </div>
       </div>
 
@@ -116,7 +122,7 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
                 <td>{face.crop && <img src={face.crop} alt="" className="pr-crop" />}</td>
                 <td>{face.classification.fake_probability.toFixed(3)}</td>
                 <td className={isFake ? "pr-fake" : "pr-real"}>{isFake ? "FAKE" : "REAL"}</td>
-                <td>{isFake ? "Manipulated" : "Zero Mask"}</td>
+                <td>{isBaseline ? "N/A (no mask)" : isFake ? "Manipulated" : "Zero Mask"}</td>
               </tr>
             );
           })}

@@ -5,9 +5,11 @@ import type { FaceResult } from "@/types/veritas";
 interface SelectedFaceViewProps {
   face: FaceResult;
   onBack: () => void;
+  /** True when the result came from the baseline (classification only). */
+  isBaseline?: boolean;
 }
 
-export function SelectedFaceView({ face, onBack }: SelectedFaceViewProps): React.ReactElement {
+export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedFaceViewProps): React.ReactElement {
   const isFake = face.classification.label === "fake";
   const score = face.classification.fake_probability;
 
@@ -116,8 +118,23 @@ export function SelectedFaceView({ face, onBack }: SelectedFaceViewProps): React
 
       <div className="flex items-center gap-2 mt-3">
         <span className="w-4 h-4 rounded" style={{ backgroundColor: "#FFE9E9", border: "1px solid #FF3131" }} />
-        <span className="text-xs text-muted">Predicted fake / mask overlay</span>
+        <span className="text-xs text-muted">{isBaseline ? "Predicted fake" : "Predicted fake / mask overlay"}</span>
       </div>
+
+      {/* Baseline has no segmentation head, so there is no mask to show */}
+      {isBaseline && (
+        <div className="mt-6 border-t border-border pt-5">
+          <h3 className="text-base font-bold text-navy">Explainability</h3>
+          <div className="mt-3 rounded-xl border border-border bg-[#FAFBFD] p-4 flex items-start gap-3">
+            <img src="/icons/info-icon.svg" alt="" width={18} height={18} className="object-contain opacity-70 mt-0.5" />
+            <p className="text-xs text-muted leading-relaxed">
+              The baseline EfficientNet-B7 is classification-only, so it gives a score and verdict for
+              Face {face.face_id} but no localization mask. Run the same image with Full VERITAS to see
+              which region was flagged.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Explainability — only for fake faces, using the model's real segmentation output */}
       {isFake && binary && (

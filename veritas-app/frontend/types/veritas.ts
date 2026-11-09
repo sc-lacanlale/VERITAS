@@ -1,3 +1,15 @@
+/** Models the Analyze page can run. "veritas" is the default. */
+export type ModelKey = "veritas" | "baseline";
+
+/** Which model produced a prediction (sent back by the backend). */
+export interface ModelInfo {
+  key: ModelKey;
+  name: string;
+  checkpoint?: string | null;
+  /** False for the baseline: classification only, no localization mask. */
+  segmentation: boolean;
+}
+
 export interface FaceResult {
   face_id: number;
   bbox: [number, number, number, number];
@@ -33,6 +45,8 @@ export interface PredictionResponse {
   faces: FaceResult[];
   overlay_image?: string;
   detector?: string;
+  /** Model that produced this result. Missing on older backends = Full VERITAS. */
+  model?: ModelInfo;
   stages?: PredictionStages;
   /** Face-detection quality verdict. */
   detection?: {

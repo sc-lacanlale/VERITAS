@@ -1,4 +1,4 @@
-import type { PredictionResponse } from "@/types/veritas";
+import type { ModelKey, PredictionResponse } from "@/types/veritas";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -8,6 +8,12 @@ export type HealthInfo = {
   checkpoint_kind?: string;
   classification_threshold?: number;
   emit_masks?: boolean;
+  /** Optional baseline model for the Analyze page's model selector. */
+  baseline?: {
+    available: boolean;
+    loaded: boolean;
+    checkpoint: string | null;
+  };
 };
 
 export async function fetchHealth(): Promise<HealthInfo | null> {
@@ -20,9 +26,10 @@ export async function fetchHealth(): Promise<HealthInfo | null> {
   }
 }
 
-export async function predictImage(file: File): Promise<PredictionResponse> {
+export async function predictImage(file: File, model?: ModelKey): Promise<PredictionResponse> {
   const formData = new FormData();
   formData.append("image", file);
+  if (model) formData.append("model", model);
   const response = await fetch(`${BACKEND_URL}/predict`, {
     method: "POST",
     body: formData,
@@ -65,10 +72,13 @@ export interface PredictStreamHandlers {
  */
 export async function predictImageStream(
   file: File,
-  handlers: PredictStreamHandlers = {}
+  handlers: PredictStreamHandlers = {},
+  model?: ModelKey
 ): Promise<PredictionResponse> {
   const formData = new FormData();
   formData.append("image", file);
+  // Omitted = backend default (Full VERITAS), same as before.
+  if (model) formData.append("model", model);
 
   const response = await fetch(`${BACKEND_URL}/predict/stream`, {
     method: "POST",

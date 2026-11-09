@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrainedModelsCard } from "@/components/overview/TrainedModelsCard";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface DonutProps {
@@ -52,7 +53,10 @@ function DonutChart({ percentage, color }: DonutProps): React.ReactElement {
 // ── Workflow step ─────────────────────────────────────────────────────────────
 function WorkflowStep({ icon, title, subtitle, bg }: WorkflowStepProps): React.ReactElement {
   return (
-    <div className={`flex flex-col items-center text-center gap-2 rounded-xl p-4 flex-shrink-0 min-w-[120px] md:flex-1 ${bg}`}>
+    <div
+      className={`flex flex-col items-center text-center gap-2 rounded-xl p-4 flex-shrink-0 min-w-[120px] md:flex-1 ${bg}`}
+      style={{ minWidth: 140, flexShrink: 0 }}
+    >
       <div className="flex items-center justify-center">{icon}</div>
       <p className="text-xs font-semibold text-navy leading-tight">{title}</p>
       <p className="text-[11px] text-muted leading-snug">{subtitle}</p>
@@ -110,7 +114,7 @@ export default function OverviewPage(): React.ReactElement {
       </div>
 
       {/* Split cards row */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="split-cards grid grid-cols-4 gap-4">
 
         {/* Dataset */}
         <div className="bg-white border border-border rounded-xl p-4 flex flex-col gap-2">
@@ -182,7 +186,7 @@ export default function OverviewPage(): React.ReactElement {
         <h2 className="text-base font-bold text-navy mb-1">Architecture Workflow</h2>
         <p className="text-xs text-muted mb-5">End-to-end pipeline data to analysis</p>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <div className="workflow-scroll flex items-center gap-2 overflow-x-auto pb-2">
           <WorkflowStep
             bg="bg-[#ECF4FE]"
             icon={
@@ -219,7 +223,7 @@ export default function OverviewPage(): React.ReactElement {
             subtitle="Saved checkpoint and inference"
           />
           <span className="text-muted text-lg flex-shrink-0">→</span>
-          <div className="flex flex-col gap-2 flex-shrink-0 min-w-[150px] md:flex-1">
+          <div className="flex flex-col gap-2 flex-shrink-0 min-w-[150px] md:flex-1" style={{ minWidth: 230, flexShrink: 0 }}>
             <OutcomeCard
               bg="bg-[#EAF3FE]"
               icon={
@@ -281,20 +285,8 @@ export default function OverviewPage(): React.ReactElement {
           </div>
         </div>
 
-        {/* Active model */}
-        <div className="bg-white border border-border rounded-xl p-6 flex-1 min-w-[220px] w-full">
-          <h2 className="text-base font-bold text-navy mb-1 text-center md:text-left">Active Trained Model</h2>
-          <p className="text-xs text-muted mb-4 text-center md:text-left">VERITAS model loaded for image analysis</p>
-          <div className="bg-[#E9F5F1] border border-[#C4F0E3] rounded-xl p-5 flex flex-col items-center text-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white border-2 border-[#C4F0E3] flex items-center justify-center">
-              <img src="/icons/check-icon.svg" alt="" width={22} height={22} className="object-contain" />
-            </div>
-            <p className="text-sm font-bold text-navy">Ready for analysis</p>
-            <p className="text-xs text-muted leading-snug">
-              Upload a facial image to detect and localize manipulation.
-            </p>
-          </div>
-        </div>
+        {/* Trained models (live status from the backend) */}
+        <TrainedModelsCard />
       </div>
 
     </div>

@@ -1,0 +1,102 @@
+/* VERITAS dark theme.
+ * Turned on by the `dark` class on <html> (sidebar toggle, saved in localStorage).
+ * The pages hard-code light colors, so this file maps each one to a dark
+ * counterpart instead of editing every page. Screen only: printed reports stay light.
+ * Generated from the colors used in app/ and components/; if a new light color
+ * is added to a page, add its dark value here. */
+
+@media screen {
+html.dark { color-scheme: dark; background-color: #0B1424; }
+html.dark body { background-color: #0B1424; color: #E6ECF7; }
+
+/* Theme utilities */
+html.dark .bg-white { background-color: #121E33; }
+html.dark .text-navy { color: #E6ECF7; }
+html.dark .text-muted { color: #9AA6BC; }
+html.dark .border-border { border-color: #263652; }
+html.dark .bg-border { background-color: #263652; }
+html.dark .text-brand { color: #8F8FFF; }
+html.dark .border-brand { border-color: #6B6BFF; }
+html.dark .text-positive { color: #5FCB6A; }
+html.dark .text-danger { color: #F08A84; }
+html.dark .text-warning { color: #D9B25E; }
+html.dark .bg-bg { background-color: #0B1424; }
+html.dark .hover\:text-navy:hover { color: #E6ECF7; }
+
+/* Arbitrary color utilities */
+html.dark .bg-\[\#C4F0E3\] { background-color: #17463A; }
+html.dark .bg-\[\#D9D9D9\] { background-color: #2A3650; }
+html.dark .bg-\[\#E5E7EB\] { background-color: #263652; }
+html.dark .bg-\[\#E9F5F1\] { background-color: #12332A; }
+html.dark .bg-\[\#EAF0FE\] { background-color: #1C2A55; }
+html.dark .bg-\[\#EAF3FE\] { background-color: #172648; }
+html.dark .bg-\[\#ECF4FE\] { background-color: #172648; }
+html.dark .bg-\[\#EDEEF2\] { background-color: #17253D; }
+html.dark .bg-\[\#F1EFFD\] { background-color: #211D44; }
+html.dark .bg-\[\#F1F2F5\] { background-color: #17253D; }
+html.dark .bg-\[\#F4F6FF\] { background-color: #1C2B4D; }
+html.dark .bg-\[\#F6F7F9\] { background-color: #17253D; }
+html.dark .bg-\[\#F6F8FF\] { background-color: #17253D; }
+html.dark .bg-\[\#F9FAFD\] { background-color: #0B1424; }
+html.dark .bg-\[\#F9FAFD\]\/80 { background-color: rgba(11,20,36,0.8); }
+html.dark .bg-\[\#FAFBFD\] { background-color: #17253D; }
+html.dark .bg-\[\#FEEBEA\] { background-color: #3A1C22; }
+html.dark .bg-\[\#FEF4DD\] { background-color: #3A2F14; }
+html.dark .bg-\[\#f1f2fd\] { background-color: #1C2B4D; }
+html.dark .border-\[\#2C8833\] { border-color: #3FA34A; }
+html.dark .border-\[\#3333FF\] { border-color: #6B6BFF; }
+html.dark .border-\[\#9D803E\] { border-color: #C9A14E; }
+html.dark .border-\[\#C05852\] { border-color: #D9736D; }
+html.dark .border-\[\#C4F0E3\] { border-color: #1F5A47; }
+html.dark .border-\[\#C9CDD5\] { border-color: #4A5670; }
+html.dark .border-\[\#C9D3FB\] { border-color: #34447A; }
+html.dark .border-\[\#DADADA\] { border-color: #263652; }
+html.dark .border-\[\#DCE3FD\] { border-color: #2A3A66; }
+html.dark .border-\[\#E5E7EB\] { border-color: #263652; }
+html.dark .border-t-\[\#9D803E\] { border-top-color: #C9A14E; }
+html.dark .from-\[\#F4F6FF\] { --tw-gradient-from: #1C2B4D var(--tw-gradient-from-position); --tw-gradient-to: #121E33 var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.dark .hover\:bg-\[\#F4F6FF\]:hover { background-color: #1C2B4D; }
+html.dark .hover\:bg-\[\#dde6fd\]:hover { background-color: #24346A; }
+html.dark .hover\:border-\[\#C9D3FB\]:hover { border-color: #34447A; }
+html.dark .text-\[\#9D803E\] { color: #D9B25E; }
+html.dark .text-\[\#A5AAB5\] { color: #6B778F; }
+html.dark .text-\[\#FF3131\] { color: #FF6B6B; }
+html.dark .text-\[\#c9d2e3\] { color: #c9d2e3; }
+html.dark .to-white { --tw-gradient-to: #121E33 var(--tw-gradient-to-position); }
+
+/* Inline style colors (banners, dialogs, layout). Server-rendered styles keep the hex,
+   client-rendered ones are serialized as rgb(), so both spellings are matched. */
+html.dark [style*="background-color:#F9FAFD" i], html.dark [style*="background-color: #F9FAFD" i], html.dark [style*="background-color: rgb(249, 250, 253)"] { background-color: #0B1424 !important; }
+html.dark [style*="background-color:#DADADA" i], html.dark [style*="background-color: #DADADA" i], html.dark [style*="background-color: rgb(218, 218, 218)"] { background-color: #263652 !important; }
+html.dark [style*="background-color:#FFE9E9" i], html.dark [style*="background-color: #FFE9E9" i], html.dark [style*="background-color: rgb(255, 233, 233)"] { background-color: #3A1C22 !important; }
+html.dark [style*="background-color:#FFF2F2" i], html.dark [style*="background-color: #FFF2F2" i], html.dark [style*="background-color: rgb(255, 242, 242)"] { background-color: #3A1C22 !important; }
+html.dark [style*="background-color:#FDE3E3" i], html.dark [style*="background-color: #FDE3E3" i], html.dark [style*="background-color: rgb(253, 227, 227)"] { background-color: #4A2229 !important; }
+html.dark [style*="background-color:#FAD4D1" i], html.dark [style*="background-color: #FAD4D1" i], html.dark [style*="background-color: rgb(250, 212, 209)"] { background-color: #4A2229 !important; }
+html.dark [style*="background-color:#E9F5F1" i], html.dark [style*="background-color: #E9F5F1" i], html.dark [style*="background-color: rgb(233, 245, 241)"] { background-color: #12332A !important; }
+html.dark [style*="background-color:#C4F0E3" i], html.dark [style*="background-color: #C4F0E3" i], html.dark [style*="background-color: rgb(196, 240, 227)"] { background-color: #17463A !important; }
+html.dark [style*="background-color:#EAF3FE" i], html.dark [style*="background-color: #EAF3FE" i], html.dark [style*="background-color: rgb(234, 243, 254)"] { background-color: #172648 !important; }
+html.dark [style*="background-color:#FEF4DD" i], html.dark [style*="background-color: #FEF4DD" i], html.dark [style*="background-color: rgb(254, 244, 221)"] { background-color: #3A2F14 !important; }
+html.dark [style*="border-color:#FFD0D0" i], html.dark [style*="border-color: #FFD0D0" i], html.dark [style*="border-color: rgb(255, 208, 208)"] { border-color: #6A2C33 !important; }
+html.dark [style*="border-color:#C4F0E3" i], html.dark [style*="border-color: #C4F0E3" i], html.dark [style*="border-color: rgb(196, 240, 227)"] { border-color: #1F5A47 !important; }
+html.dark [style^="color:#142849" i], html.dark [style*=";color:#142849" i], html.dark [style^="color: rgb(20, 40, 73)"], html.dark [style*="; color: rgb(20, 40, 73)"] { color: #E6ECF7 !important; }
+
+/* SVG neutrals (chart tracks, spinner rings) */
+html.dark [stroke="#E5E7EB" i] { stroke: #263652; }
+html.dark [fill="#E5E7EB" i] { fill: #263652; }
+html.dark .model-glyph [fill="#FFFFFF" i] { fill: #17253D; }
+html.dark .model-glyph [stroke="#142849" i] { stroke: #E6ECF7; }
+html.dark .model-glyph [fill="#142849" i] { fill: #E6ECF7; }
+html.dark .model-glyph [stroke="#C9D3FB" i] { stroke: #34447A; }
+
+/* Navy line icons would disappear on dark surfaces; lighten them. */
+html.dark img[src*="file-icon.svg"], html.dark img[src*="blue-dataset-icon.svg"], html.dark img[src*="no-face-icon.svg"], html.dark img[src*="info-icon.svg"],
+html.dark img[src*="training-icon.svg"], html.dark img[src*="testing-icon.svg"], html.dark img[src*="evaluation-icon.svg"] { filter: invert(1) hue-rotate(180deg) brightness(1.15); }
+
+/* Brand-blue icons are visible but dim on dark tiles; lift them a little. */
+html.dark img[src*="/sop"], html.dark img[src*="icon clock.svg"], html.dark img[src*="icon face-id.svg"], html.dark img[src*="icon circle-check.svg"],
+html.dark img[src*="icon scale.svg"], html.dark img[src*="icon mask.svg"], html.dark img[src*="icon photo.svg"], html.dark img[src*="icon file-text.svg"],
+html.dark img[src*="icon shield-check.svg"], html.dark img[src*="time-icon.svg"], html.dark img[src*="status-icon.svg"], html.dark img[src*="face-icon.svg"] { filter: brightness(1.7) saturate(1.1); }
+
+/* Smooth switch between themes */
+html.theme-anim, html.theme-anim * { transition: background-color .25s ease, border-color .25s ease, color .2s ease !important; }
+}

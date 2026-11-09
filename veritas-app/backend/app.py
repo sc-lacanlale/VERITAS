@@ -9,12 +9,14 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from PIL import Image, UnidentifiedImageError
 
-from config import MODEL_CONFIG
+from config import MODEL_CONFIG, baseline_checkpoint
+from inference.baseline import baseline_loaded, load_baseline
 from inference.face_detector import build_face_detector
 from inference.geometry import GeometryTransform
 from inference.model import load_veritas, model_status
@@ -29,7 +31,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-STATE: dict = {"predictor": None, "detector": None, "ready": False, "error": None}
+STATE: dict = {"predictor": None, "detector": None, "ready": False, "error": None, "baseline_predictor": None}
+
+# Models the UI can pick. "veritas" is the default, so requests without a
+# `model` field behave exactly as before.
+MODEL_KEYS = ("veritas", "baseline")
+
+
+def _model_info(key: str) -> dict:
+    if key == "baseline":
+        ckpt = baseline_checkpoint()
+        return {
+            "key": "baseline",
+            "name": "Baseline EfficientNet-B7",
+            "checkpoint": ckpt.name if ckpt else None,
+            "segmentation": False,
+        }
+    return {
+        "key": "veritas",
+        "name": "Full VERITAS",
+        "checkpoint": Path(MODEL_CONFIG["checkpoint"]).name,
+        "segmentation": True,
+    }
+
+
+def _get_predictor(key: str) -> VeritasInference:
+    """Return the predictor for `key`. The baseline is loaded on first use only."""
+    if key == "veritas":
+        return STATE["predictor"]
+    if STATE["baseline_predictor"] is not None:
+        return STATE["baseline_predictor"]
+    ckpt = baseline_checkpoint()
+    if ckpt is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Baseline checkpoint not found. Put baseline_effb7_ow_best.pt (or baseline_effb7_defacto_best.pt) in models/.",
+        )
+    try:
+        model, device = load_baseline(ckpt, MODEL_CONFIG["device"])
+    except Exception as e:
+        print("Baseline load failed:", e)
+        raise HTTPException(status_code=503, detail=f"Baseline model could not be loaded: {e}") from e
+    # Same detector, geometry and threshold as VERITAS; no masks (no segmentation head).
+    STATE["baseline_predictor"] = VeritasInference(
+        model,
+        device,
+        GeometryTransform(MODEL_CONFIG["image_size"], MODEL_CONFIG["face_margin"]),
+        MODEL_CONFIG["classification_threshold"],
+        MODEL_CONFIG["mask_threshold"],
+        emit_masks=False,
+        quality_min_confidence=MODEL_CONFIG.get("quality_min_confidence", 0.0),
+        quality_min_face_frac=MODEL_CONFIG.get("quality_min_face_frac", 0.0),
+    )
+    print("Baseline inference ready")
+    return STATE["baseline_predictor"]
+
+
+def _check_model_key(model: str) -> str:
+    key = (model or "veritas").strip().lower()
+    if key not in MODEL_KEYS:
+        raise HTTPException(status_code=400, detail=f"Unknown model: {model}")
+    return key
 
 
 def _decode_image(data: bytes) -> np.ndarray:
@@ -71,6 +133,13 @@ def startup():
         STATE["detector"] = build_face_detector(MODEL_CONFIG["face_score_threshold"], cache)
         STATE["ready"] = True
         print("Inference service ready")
+        # Load the baseline now too, so its first analysis is not slow.
+        # Set BASELINE_PRELOAD=0 to load it on first use instead.
+        if os.environ.get("BASELINE_PRELOAD", "1") != "0" and baseline_checkpoint() is not None:
+            try:
+                _get_predictor("baseline")
+            except HTTPException as e:
+                print("Baseline not preloaded:", e.detail)
     except FileNotFoundError as e:
         STATE["error"] = "MODEL_NOT_CONFIGURED"
         print("Checkpoint missing:", e)
@@ -90,6 +159,11 @@ def health():
         "checkpoint_kind": MODEL_CONFIG.get("checkpoint_kind"),
         "classification_threshold": MODEL_CONFIG["classification_threshold"],
         "emit_masks": MODEL_CONFIG.get("emit_masks", True),
+        "baseline": {
+            "available": baseline_checkpoint() is not None,
+            "loaded": baseline_loaded(),
+            "checkpoint": _model_info("baseline")["checkpoint"],
+        },
     }
 
 
@@ -113,15 +187,18 @@ async def _validate_upload(image: UploadFile) -> bytes:
 
 
 @app.post("/predict")
-async def predict(image: UploadFile = File(...)):
+async def predict(image: UploadFile = File(...), model: str = Form("veritas")):
+    key = _check_model_key(model)
     data = await _validate_upload(image)
+    predictor = await run_in_threadpool(_get_predictor, key)
     try:
         rgb = _decode_image(data)
         detected = STATE["detector"].detect(rgb)
-        assessment = STATE["predictor"].assess_faces(rgb, detected)
+        assessment = predictor.assess_faces(rgb, detected)
         # Only analyze faces that clear the quality gate.
-        result = STATE["predictor"].predict_image(rgb, assessment["faces"])
+        result = predictor.predict_image(rgb, assessment["faces"])
         result["detector"] = STATE["detector"].name
+        result["model"] = _model_info(key)
         result["detection"] = {
             "status": assessment["status"],  # ok | none | low_quality
             "detected": len(detected),
@@ -135,14 +212,16 @@ async def predict(image: UploadFile = File(...)):
 
 
 @app.post("/predict/stream")
-async def predict_stream(image: UploadFile = File(...)):
+async def predict_stream(image: UploadFile = File(...), model: str = Form("veritas")):
     """Server-Sent Events variant of /predict.
 
     Emits one event per real pipeline stage so the UI can show each step
     going active -> done in real time. The final 'result' event carries the
     exact same payload as /predict. The one-shot /predict is untouched.
     """
+    key = _check_model_key(model)
     data = await _validate_upload(image)
+    predictor = await run_in_threadpool(_get_predictor, key)
 
     def sse(event: str, payload: dict) -> str:
         return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
@@ -162,14 +241,14 @@ async def predict_stream(image: UploadFile = File(...)):
             yield sse("stage", {"name": "face_detection", "status": "active"})
             detected = STATE["detector"].detect(rgb)
             detector_name = STATE["detector"].name
-            assessment = STATE["predictor"].assess_faces(rgb, detected)
+            assessment = predictor.assess_faces(rgb, detected)
             detection_meta = {
                 "status": assessment["status"],  # ok | none | low_quality
                 "detected": len(detected),
                 "analyzable": len(assessment["faces"]),
             }
 
-            for stage, payload in STATE["predictor"].predict_image_streaming(rgb, assessment["faces"]):
+            for stage, payload in predictor.predict_image_streaming(rgb, assessment["faces"]):
                 if stage == "face_detection":
                     # Carry the real quality verdict on the detection stage.
                     payload = {**payload, **detection_meta}
@@ -177,6 +256,7 @@ async def predict_stream(image: UploadFile = File(...)):
                 elif stage == "result":
                     payload["detector"] = detector_name
                     payload["detection"] = detection_meta
+                    payload["model"] = _model_info(key)
                     yield sse("result", payload)
                 else:
                     yield sse("stage", {"name": stage, "status": "done", "data": payload})

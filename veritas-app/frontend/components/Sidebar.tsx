@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface NavItem {
   label: string;
@@ -96,7 +97,18 @@ function NavLinks({ onClose }: { onClose?: () => void }) {
           <Link
             key={item.href}
             href={item.href}
-            onClick={onClose}
+            onClick={(e) => {
+              onClose?.();
+              if (!active) return;
+              // Same page: Next.js would do nothing. Let the page cancel it first
+              // (e.g. Analyze Image with work in progress shows a confirm dialog);
+              // otherwise show the loader and go back to the top, like a reload.
+              e.preventDefault();
+              const proceed = window.dispatchEvent(
+                new CustomEvent("veritas:same-page", { detail: { href: item.href }, cancelable: true })
+              );
+              if (proceed) window.dispatchEvent(new Event("veritas:show-loader"));
+            }}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
               ${active
                 ? "bg-white/10 text-white"
@@ -122,6 +134,16 @@ export function Sidebar(): React.ReactElement {
     setOpen(false);
   }, [pathname]);
 
+  // Lock page scroll while the mobile menu is open, like a native app drawer.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   return (
     <>
       {/* ── Desktop sidebar (lg and above) ── */}
@@ -132,16 +154,30 @@ export function Sidebar(): React.ReactElement {
         <div className="px-3">
           <NavLinks />
         </div>
+        <div className="px-3 mt-auto">
+          <ThemeToggle />
+        </div>
       </aside>
+
+      {/* ── Mobile menu backdrop: blurs and dims the page behind the menu ── */}
+      <div
+        aria-hidden="true"
+        onClick={() => setOpen(false)}
+        className={`lg:hidden fixed inset-0 z-40 bg-[#0B1424]/45 backdrop-blur-[3px] transition-opacity duration-200
+          ${open ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      />
 
       {/* ── Mobile top bar (below lg) ── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-navy">
         <div className="flex items-center justify-between px-4 py-3">
           <img src="/logo.svg" alt="VERITAS" className="h-9 w-auto" />
+          <div className="flex items-center gap-2">
+          <ThemeToggle compact />
           <button
             onClick={() => setOpen(!open)}
             className="text-white p-1"
             aria-label="Toggle menu"
+            aria-expanded={open}
           >
             {open ? (
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -156,6 +192,7 @@ export function Sidebar(): React.ReactElement {
               </svg>
             )}
           </button>
+          </div>
         </div>
 
         {/* Dropdown menu — drops down from the top bar */}
