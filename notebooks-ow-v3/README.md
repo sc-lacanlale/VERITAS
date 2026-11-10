@@ -13,9 +13,8 @@ already generated masks. Do not load a legacy or v2 model as a v3 training check
 The corrected early-fusion and additive late-fusion references are trained again
 under the same v3 supervision and optimization protocol as the improved candidate.
 
-The source branch is `codex/ow-v3-improvements`. Actual GitHub publication,
-Kaggle notebook versions, and run outcomes must be recorded from completed
-publication/submission actions; this documentation alone does not establish them.
+The source branch is `codex/ow-v3-improvements`. The [publication and execution
+record](PUBLICATION.md) contains verified GitHub/Kaggle links, versions and checks.
 
 ## Notebook map
 
@@ -134,6 +133,12 @@ inference; v3 does not invent confidence from the existing PNGs.
 
 ## Attach data and run the quality audit
 
+Authenticated source verification on 2026-11-10 confirmed that version 3 of the
+provided `nathanielescuro/ds18-veritas` teacher reads GT masks only for Fake samples
+and gates segmentation loss on `has_gt_mask`. Real images therefore did not supply
+negative segmentation supervision in that source. This verifies the earlier code
+concern; it does not establish the accuracy of the teacher's individual masks.
+
 Attach the same sources to every training experiment:
 
 - [OpenForensics Wild dataset](https://www.kaggle.com/datasets/ahmedgamal/openforensics-wild-dataset).
@@ -185,6 +190,23 @@ mismatches, changed source code, or changed data/optimization protocol. Changing
 model or runtime source requires a new experiment rather than continuing old weights.
 `resume=False` starts fresh only in a clean working session; final best-checkpoint
 loading remains independent of that training-resume switch.
+
+For reproducible CLI packages, run `python prepare_ow_v3_kaggle.py` after generating
+the notebooks. It validates and copies code plus private upload metadata into
+`kaggle_working/ow-v3-publish`; it never publishes or starts a job. For a full-run
+package, use `--only 01 04 --run-mode full`, optionally setting
+`--time-budget-hours` and this same experiment's `--resume-source owner/slug/version`.
+Review the generated metadata, then use the official Kaggle CLI:
+
+```powershell
+& '.\.venv-publish\Scripts\kaggle.exe' kernels push -p FOLDER --no-run
+```
+
+Omitting `--no-run` starts a saved run. Quick saves can temporarily occupy Kaggle
+CPU conversion slots, and a quick-save status of COMPLETE does not mean training
+executed. Require the model's validation/training markers and artifacts. Shortening
+the wall-clock budget preserves a partial epoch; it does not change the training
+protocol or turn that partial run into a final result.
 
 ## Shared optimization and reproducibility
 
