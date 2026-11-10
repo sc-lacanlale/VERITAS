@@ -4,6 +4,11 @@ Reviewed 2026-11-10. The most useful next steps are to establish that the auxili
 targets help classification, then test nonlinear fusion and stronger local evidence.
 More branches and a larger parameter count do not establish higher accuracy.
 
+Follow-up: [OW v3's publication record](../notebooks-ow-v3/PUBLICATION.md) now verifies
+the exact teacher source and final Train/Validation mask warning, and records the
+implemented changes and passed GPU smoke checks. Availability statements below
+describe the earlier audit stage.
+
 This review combines source inspection, synthetic CPU probes, historical mask
 metadata, and primary research. Synthetic probes demonstrate properties of the
 implementation; they do not measure classification accuracy. No new GPU training

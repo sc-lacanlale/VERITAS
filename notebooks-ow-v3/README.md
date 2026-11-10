@@ -294,8 +294,9 @@ comparisons remain applicable. Their methods/results sections need to distinguis
 - Implemented fixed starting settings and explicit ablations from a completed
   hyperparameter optimization study. No such optimization outcome is assumed.
 
-Final Train/Validation masks still need quality assessment; the code does not
-establish that every retained Fake target is correct. The largest-face crop can
+The first final-data audit checked Train/Validation metadata and 32 sample overlays,
+confirming the Real-target conflict. It does not establish that every retained Fake
+target is correct. The largest-face crop can
 inherit an image-level label; mixed-face label correctness has not been established
 for the Kaggle repackaging. Source/identity separation and near-duplicate leakage
 across official splits have not been audited. An external held-out dataset is needed

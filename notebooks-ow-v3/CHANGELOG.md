@@ -70,5 +70,6 @@ revision. Final mask correctness, mixed-face crop labels, split independence,
 held-out accuracy gains, and real deployment performance remain empirical checks.
 The implementation does not establish that VERITAS outperforms B7.
 
-Development branch: `codex/ow-v3-improvements`. GitHub/Kaggle publication links and
-saved run versions are to be recorded after actual publication and verification.
+Development branch: `codex/ow-v3-improvements`. See [the publication record](PUBLICATION.md)
+for verified GitHub/Kaggle links, passed GPU smoke checks, the final-data mask audit,
+and the submitted full-data runs. No final three-epoch accuracy claim is available.

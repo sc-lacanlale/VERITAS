@@ -75,3 +75,54 @@ At submission, the account reported about 5.74 GPU hours remaining, with the quo
 refresh at **2026-11-14 08:00 Asia/Manila**. Full runs must fit remaining quota and
 preserve partial checkpoints. Neither a successful submission nor a partial epoch
 is evidence of higher held-out accuracy.
+
+### Verified smoke and audit outcomes
+
+All three version 2 runs completed successfully. The audit emitted
+`MASK_AUDIT_COMPLETED_TRAIN_VAL_ONLY`; both GPU runs emitted
+`TRAIN_SMOKE_VALIDATION_PASSED`. Each smoke trained one epoch on 128 images and
+evaluated 128 Validation images. Neither produced a final Test result.
+
+The completed mask audit found the following mean teacher-positive areas:
+
+| Split | Real | Fake |
+| --- | ---: | ---: |
+| Train | 53.704% | 53.827% |
+| Validation | 53.716% | 53.802% |
+
+All four groups had zero empty-mask rate. Inspection of 32 sampled overlays showed
+broad central-face masks on both classes, with occasional holes and spill into
+hair/background. This confirms the Real-target conflict and supports the implemented
+Real-zero correction. Fake masks remain uncertain coarse targets. The audit is
+not a pixel-level ground-truth assessment and does not establish localization accuracy.
+
+The smoke inference measurements used one Tesla T4, Torch `2.11.0+cu130`, FP32,
+batch size 4, one warmup batch and three timed repeats. They exclude preprocessing:
+
+| Model | Batch latency | Peak allocated CUDA memory |
+| --- | ---: | ---: |
+| B7 baseline | 245.50 ms | 900,807,680 bytes |
+| Improved full VERITAS | 281.22 ms | 964,005,888 bytes |
+
+These small smoke measurements are execution/compute observations, not final
+deployment benchmarks or evidence of an accuracy gain. Smoke Accuracy/F1 are not
+used to choose architecture or hyperparameters.
+
+### Full-data runs submitted
+
+After smoke validation, notebooks **01 and 04 version 3** were submitted as fresh
+full-data runs and both reported **RUNNING**. Saved source was read back and matched
+the prepared packages exactly: `run_mode=full`, three planned epochs, no subsampling,
+2.4-hour per-run budget, and only Wild plus the completed mask source attached.
+No smoke checkpoint was attached. Their common source digest is
+`112357f498eda8ed0e637072fe86b9c4715eaa6b17a173b3a2a46016dc1dc6f2`.
+
+The account had 5.60 GPU hours left after smoke checks. Each full-data run has a
+9,360-second server limit, allowing time to save after its 2.4-hour internal stop.
+The studies still target three complete epochs. A saved partial epoch must be
+resumed using that experiment's own full output; final Test comparison remains
+pending. This record does not assert that the initial full runs finished an epoch.
+Both saved full-run metadata records identify the same container:
+`gcr.io/kaggle-private-byod/python@sha256:de153e6d303881930c51286216393d56f56b26458d0661350305a1e8144eea01`.
+Record/preserve the environment when continuing rather than assuming a future
+Kaggle image will be identical.
