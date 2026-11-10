@@ -115,7 +115,7 @@ export default function AnalyzePage(): React.ReactElement {
   const [stageDetails, setStageDetails] = useState<StageDetailMap>({});
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  // Which model to run. Full VERITAS stays the default.
+  // Which model to run. VERITAS stays the default.
   const [modelKey, setModelKey] = useState<ModelKey>("veritas");
   // Model used for the analysis currently on screen / in progress.
   const [runModel, setRunModel] = useState<ModelKey>("veritas");

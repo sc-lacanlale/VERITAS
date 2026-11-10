@@ -23,7 +23,7 @@ interface ModelOption {
 const OPTIONS: ModelOption[] = [
   {
     key: "veritas",
-    title: "Full VERITAS",
+    title: "VERITAS",
     subtitle: "Detects and localizes the manipulated region",
     streams: ["RGB", "SRM", "FFT"],
     outputs: [
@@ -224,22 +224,15 @@ export function ModelSelector({ value, onChange, baseline, disabled = false }: M
               </div>
 
               {/* Baseline checkpoint state */}
-              {opt.key === "baseline" && (
+              {opt.key === "baseline" && baseline.available !== true && (
                 <div
                   style={{ wordBreak: "normal" }}
-                  className={`flex items-start gap-1.5 text-[11px] leading-snug -mt-1 ${
-                    baseline.available === true ? "text-muted" : "text-[#9D803E]"
-                  }`}
+                  className="flex items-start gap-1.5 text-[11px] leading-snug -mt-1 text-[#9D803E]"
                 >
                   {baseline.available === null ? (
                     <>
                       <span className="w-3 h-3 rounded-full border-2 border-[#E5E7EB] border-t-[#9D803E] animate-spin" />
                       Checking for checkpoint...
-                    </>
-                  ) : baseline.available ? (
-                    <>
-                      <img src="/icons/file-icon.svg" alt="" width={12} height={12} className="object-contain opacity-70" />
-                      <span className="truncate">{baseline.checkpoint ?? "Checkpoint found"}</span>
                     </>
                   ) : (
                     <>

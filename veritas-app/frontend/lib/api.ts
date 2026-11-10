@@ -77,7 +77,7 @@ export async function predictImageStream(
 ): Promise<PredictionResponse> {
   const formData = new FormData();
   formData.append("image", file);
-  // Omitted = backend default (Full VERITAS), same as before.
+  // Omitted = backend default (VERITAS), same as before.
   if (model) formData.append("model", model);
 
   const response = await fetch(`${BACKEND_URL}/predict/stream`, {

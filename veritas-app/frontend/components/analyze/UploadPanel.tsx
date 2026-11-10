@@ -291,7 +291,7 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
               ? `Live progress for ${file?.name ?? "image"}`
               : hasFailure
                 ? "The analysis could not be completed"
-                : `Steps performed after image upload · ${isBaseline ? "Baseline EfficientNet-B7" : "Full VERITAS"}`}
+                : `Steps performed after image upload · ${isBaseline ? "Baseline EfficientNet-B7" : "VERITAS"}`}
           </p>
 
           <div className="flex flex-col gap-5">

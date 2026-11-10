@@ -129,7 +129,7 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
             <img src="/icons/info-icon.svg" alt="" width={18} height={18} className="object-contain opacity-70 mt-0.5" />
             <p className="text-xs text-muted leading-relaxed">
               The baseline EfficientNet-B7 is classification-only, so it gives a score and verdict for
-              Face {face.face_id} but no localization mask. Run the same image with Full VERITAS to see
+              Face {face.face_id} but no localization mask. Run the same image with VERITAS to see
               which region was flagged.
             </p>
           </div>

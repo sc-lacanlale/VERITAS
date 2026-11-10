@@ -62,22 +62,16 @@ export function TrainedModelsCard(): React.ReactElement {
       <p className="text-xs text-muted mb-4">Models available for image analysis</p>
 
       <div className="flex flex-col gap-3">
-        {/* Full VERITAS */}
+        {/* VERITAS */}
         <div className="rounded-xl border border-[#C9D3FB] bg-[#F4F6FF] p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-navy whitespace-nowrap">Full VERITAS</span>
+              <span className="text-sm font-bold text-navy whitespace-nowrap">VERITAS</span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EAF0FE] text-brand">Default</span>
             </div>
             <StatusPill {...veritas} />
           </div>
           <p className="text-[11px] text-muted leading-snug">Multi-stream EfficientNet-B7 + DeepLabV3+ · score and localization mask</p>
-          {health?.checkpoint && (
-            <p className="text-[11px] text-muted flex items-center gap-1.5">
-              <img src="/icons/file-icon.svg" alt="" width={12} height={12} className="object-contain opacity-70" />
-              <span className="truncate">{health.checkpoint}</span>
-            </p>
-          )}
         </div>
 
         {/* Baseline */}
@@ -87,12 +81,6 @@ export function TrainedModelsCard(): React.ReactElement {
             <StatusPill {...baseline} />
           </div>
           <p className="text-[11px] text-muted leading-snug">RGB-only EfficientNet-B7 · score only, no mask</p>
-          {health?.baseline?.checkpoint && (
-            <p className="text-[11px] text-muted flex items-center gap-1.5">
-              <img src="/icons/file-icon.svg" alt="" width={12} height={12} className="object-contain opacity-70" />
-              <span className="truncate">{health.baseline.checkpoint}</span>
-            </p>
-          )}
         </div>
       </div>
     </div>

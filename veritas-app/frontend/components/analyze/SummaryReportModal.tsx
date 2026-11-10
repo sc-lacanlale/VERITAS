@@ -18,7 +18,7 @@ export function SummaryReportModal({
   const inferenceMs = result.stages?.inference.ms ?? null;
   const fakeCount = result.faces.filter((f) => f.classification.label === "fake").length;
   const isBaseline = result.model?.key === "baseline";
-  const modelName = result.model?.name ?? "Full VERITAS";
+  const modelName = result.model?.name ?? "VERITAS";
 
   function handlePrint(): void {
     window.print();

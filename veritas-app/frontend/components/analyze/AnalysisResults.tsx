@@ -22,7 +22,7 @@ interface AnalysisResultsProps {
 }
 
 const MODEL_NAMES: Record<ModelKey, string> = {
-  veritas: "Full VERITAS",
+  veritas: "VERITAS",
   baseline: "Baseline EfficientNet-B7",
 };
 

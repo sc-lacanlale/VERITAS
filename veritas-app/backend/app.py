@@ -49,7 +49,7 @@ def _model_info(key: str) -> dict:
         }
     return {
         "key": "veritas",
-        "name": "Full VERITAS",
+        "name": "VERITAS",
         "checkpoint": Path(MODEL_CONFIG["checkpoint"]).name,
         "segmentation": True,
     }

@@ -17,7 +17,7 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
   const firstFace = result.faces[0];
   const inferenceMs = result.stages?.inference.ms ?? null;
   const isBaseline = result.model?.key === "baseline";
-  const modelName = result.model?.name ?? "Full VERITAS";
+  const modelName = result.model?.name ?? "VERITAS";
 
   return (
     <div id="print-report" className="print-report">
