@@ -78,7 +78,15 @@ def load_veritas(checkpoint_path: Path, device_pref: str, multi_stream: bool, se
         raise RuntimeError("Checkpoint does not contain model_state_dict")
     exp_cfg = ckpt.get("exp_cfg") or {}
     version = exp_cfg.get("implementation_version")
-    if version == "ow_v2":
+    if version == "ow_v3":
+        from .architecture_v3 import VERITASV3
+
+        fields = ("multi_stream", "segmentation", "fusion", "color_srm", "frequency", "pooling", "decoder")
+        missing_fields = [field for field in fields if field not in exp_cfg]
+        if missing_fields:
+            raise ValueError(f"Incomplete ow_v3 checkpoint architecture metadata: {missing_fields}")
+        model = VERITASV3(pretrained=False, **{field: exp_cfg[field] for field in fields})
+    elif version == "ow_v2":
         from .architecture_v2 import VERITASV2
 
         model = VERITASV2(multi_stream=exp_cfg["multi_stream"], segmentation=exp_cfg["segmentation"],
@@ -87,7 +95,7 @@ def load_veritas(checkpoint_path: Path, device_pref: str, multi_stream: bool, se
         model = VERITASModel(multi_stream=multi_stream, segmentation=segmentation)
     else:
         raise ValueError(f"Unsupported checkpoint implementation: {version}")
-    missing, unexpected = model.load_state_dict(_strip_module(ckpt["model_state_dict"]), strict=version == "ow_v2")
+    missing, unexpected = model.load_state_dict(_strip_module(ckpt["model_state_dict"]), strict=version in ("ow_v2", "ow_v3"))
     if missing:
         print("Missing keys:", missing[:8], "..." if len(missing) > 8 else "")
     if unexpected:
