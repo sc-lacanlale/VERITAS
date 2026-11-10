@@ -9,7 +9,7 @@ import torch
 
 from .architecture import VERITASModel
 
-_MODEL: Optional[VERITASModel] = None
+_MODEL: Optional[torch.nn.Module] = None
 _DEVICE: Optional[torch.device] = None
 _STATUS = "MODEL_NOT_CONFIGURED"
 
@@ -76,8 +76,18 @@ def load_veritas(checkpoint_path: Path, device_pref: str, multi_stream: bool, se
     ckpt = _torch_load(ckpt_file)
     if not isinstance(ckpt, dict) or "model_state_dict" not in ckpt:
         raise RuntimeError("Checkpoint does not contain model_state_dict")
-    model = VERITASModel(multi_stream=multi_stream, segmentation=segmentation)
-    missing, unexpected = model.load_state_dict(_strip_module(ckpt["model_state_dict"]), strict=False)
+    exp_cfg = ckpt.get("exp_cfg") or {}
+    version = exp_cfg.get("implementation_version")
+    if version == "ow_v2":
+        from .architecture_v2 import VERITASV2
+
+        model = VERITASV2(multi_stream=exp_cfg["multi_stream"], segmentation=exp_cfg["segmentation"],
+                          pretrained=False, fusion=exp_cfg["fusion"])
+    elif version is None:
+        model = VERITASModel(multi_stream=multi_stream, segmentation=segmentation)
+    else:
+        raise ValueError(f"Unsupported checkpoint implementation: {version}")
+    missing, unexpected = model.load_state_dict(_strip_module(ckpt["model_state_dict"]), strict=version == "ow_v2")
     if missing:
         print("Missing keys:", missing[:8], "..." if len(missing) > 8 else "")
     if unexpected:

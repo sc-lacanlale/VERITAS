@@ -792,6 +792,8 @@ def flush_batch():
         raise RuntimeError("Loaded model has no segmentation head.")
     probs = out["segmentation_prob"].detach().float().cpu().numpy()
     for i, item in enumerate(pending):
+        # Index rows live for the whole run; never retain image tensors in them.
+        del item["tensor"]
         pred = (probs[i, 0] >= thresh).astype(np.uint8) * 255
         dst = MASK_ROOT / item["mask_file"]
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -1160,12 +1162,42 @@ def list_images(split_name: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def unpack_mask_outputs(input_root: Path) -> list:
+    import tempfile
+    import zipfile
+    from pathlib import PurePosixPath
+
+    roots = []
+    for archive in input_root.rglob("_output_.zip"):
+        with zipfile.ZipFile(archive) as z:
+            members = [m for m in z.infolist() if not m.is_dir()
+                       and "ow_masks" in PurePosixPath(m.filename.replace("\\", "/")).parts]
+            if not members:
+                continue
+            target = Path(tempfile.mkdtemp(prefix="veritas_ow_masks_"))
+            for member in members:
+                rel = PurePosixPath(member.filename.replace("\\", "/"))
+                if rel.is_absolute() or ".." in rel.parts:
+                    raise ValueError(f"Unsafe mask archive path: {member.filename}")
+                rel = Path(*rel.parts[rel.parts.index("ow_masks"):])
+                dst = target / rel
+                if not dst.resolve().is_relative_to(target.resolve()):
+                    raise ValueError(f"Unsafe mask archive path: {member.filename}")
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                with z.open(member) as src, dst.open("wb") as out:
+                    shutil.copyfileobj(src, out)
+            roots.append(target)
+            print("unpacked mask output", archive, "files", len(members), "into", target)
+    return roots
+
+
 def load_mask_table() -> pd.DataFrame:
     frames = []
     roots = []
     for p in (Path("/kaggle/input"), Path("/kaggle/working"), WORKING, Path.cwd()):
         if p.exists():
             roots.append(p)
+    roots.extend(unpack_mask_outputs(Path("/kaggle/input")))
     seen = set()
     for root in roots:
         for dirpath, _, filenames in os.walk(root):
