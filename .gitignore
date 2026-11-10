@@ -8,6 +8,8 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .venv/
+.venv-ow-v2/
+.venv-publish/
 venv/
 
 # Logs and one-off local runners
