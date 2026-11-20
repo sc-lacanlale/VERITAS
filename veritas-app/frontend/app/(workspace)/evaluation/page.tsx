@@ -108,6 +108,11 @@ export default function EvaluationPage(): React.ReactElement {
           Same OpenForensics Test set for both models; checkpoint chosen by Validation accuracy
         </p>
 
+        <div className="border border-border rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 bg-[#F9FAFD] border-b border-border">
+            <p className="text-xs font-bold text-navy">Table A · Classification metrics</p>
+            <p className="text-[11px] text-muted">Accuracy, precision, recall and F1 on the 10,905 Test images</p>
+          </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -138,12 +143,18 @@ export default function EvaluationPage(): React.ReactElement {
             </tbody>
           </table>
         </div>
+        </div>
 
-        <div className="overflow-x-auto mt-4">
+        <div className="border border-border rounded-lg overflow-hidden mt-5">
+          <div className="px-4 py-2.5 bg-[#F9FAFD] border-b border-border">
+            <p className="text-xs font-bold text-navy">Table B · Confusion matrix counts</p>
+            <p className="text-[11px] text-muted">TP = Fake caught · TN = Real passed · FP = Real flagged as Fake · FN = Fake missed</p>
+          </div>
+        <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b-2 border-border">
-                <th className="text-left py-3 px-4 text-xs font-bold text-navy">Confusion counts</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-navy">Model</th>
                 <th className="text-center py-3 px-4 text-xs font-bold text-navy">TP</th>
                 <th className="text-center py-3 px-4 text-xs font-bold text-navy">TN</th>
                 <th className="text-center py-3 px-4 text-xs font-bold text-navy">FP</th>
@@ -167,6 +178,7 @@ export default function EvaluationPage(): React.ReactElement {
               </tr>
             </tbody>
           </table>
+        </div>
         </div>
 
         <div className="mt-4 p-3 bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-lg">

@@ -16,6 +16,14 @@
   }
 }
 
+/* ── Desktop scale: render the workspace at 90% (like browser zoom 90%) ── */
+@media (min-width: 1024px) {
+  html:has(.workspace-main) {
+    zoom: 0.9;
+    background-color: #F9FAFD;
+  }
+}
+
 /* ── Page titles: left-aligned on every page (globals.css centers h1) ──── */
 .workspace-main h1 {
   text-align: left;
@@ -23,7 +31,10 @@
 
 /* ── Prevent text overflow in cards on all screens ──────────────────────── */
 .workspace-content * {
-  word-break: break-word;
+  /* Wrap long words only when they can't fit; never split normal words
+     like "Platform" into "Platfo / rm". */
+  overflow-wrap: break-word;
+  word-break: normal;
   min-width: 0;
 }
 
@@ -33,8 +44,11 @@
     padding: 16px !important;
   }
 
-  /* Stack 4-col grid to 2-col */
-  .workspace-content .grid {
+  /* Stat-card rows (4 across on desktop) and the SOP grid: 2 across on phones.
+     Content grids keep their own one-column layout. */
+  .workspace-content .grid.lg\:grid-cols-4,
+  .workspace-content .grid.grid-cols-3,
+  .workspace-content .split-cards {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
@@ -64,9 +78,10 @@
   .workspace-content .split-cards .text-\[11px\] { font-size: 10px !important; line-height: 1.35; }
 }
 
-/* Very narrow phones: one split card per row */
+/* Very narrow phones: one card per row */
 @media (max-width: 379px) {
-  .workspace-content .split-cards { grid-template-columns: 1fr !important; }
+  .workspace-content .split-cards,
+  .workspace-content .grid.lg\:grid-cols-4 { grid-template-columns: 1fr !important; }
 }
 
 /* ── Tablet (640–1023px) ─────────────────────────────────────────────────── */
@@ -75,8 +90,9 @@
     padding: 24px 28px !important;
   }
 
-  /* Stack 4-col to 2-col on tablet */
-  .workspace-content .grid {
+  /* Stat-card rows (4 across on desktop): 2 across on tablet */
+  .workspace-content .grid.lg\:grid-cols-4,
+  .workspace-content .split-cards {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }

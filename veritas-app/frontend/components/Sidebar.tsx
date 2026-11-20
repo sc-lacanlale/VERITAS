@@ -147,7 +147,7 @@ export function Sidebar(): React.ReactElement {
   return (
     <>
       {/* ── Desktop sidebar (lg and above) ── */}
-      <aside className="hidden lg:flex w-[220px] min-h-screen bg-navy flex-col py-6 fixed top-0 left-0 z-50">
+      <aside className="hidden lg:flex w-[220px] bg-navy flex-col py-6 fixed top-0 bottom-0 left-0 z-50">
         <div className="px-3 pb-8">
           <img src="/logo.svg" alt="VERITAS" className="h-10 w-auto" />
         </div>

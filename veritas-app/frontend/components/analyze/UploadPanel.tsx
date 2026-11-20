@@ -326,6 +326,8 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
               const errored = showStatus && state === "error";
               const skipped = showStatus && state === "skipped";
               const detail = stageDetails[step.key];
+              // Completed with a caution: faces were analyzed but none passed the quality check.
+              const warned = done && step.key === "face_detection" && detail === "Insufficient facial exposure";
 
               let status = "";
               if (errored) status = detail || "Error";
@@ -348,6 +350,13 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF3131" strokeWidth="2.5">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </div>
+                  ) : warned ? (
+                    <div className="w-8 h-8 rounded-full bg-[#FEF4DD] flex items-center justify-center flex-shrink-0 z-10">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7791F" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="12" y1="7" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12" y2="17.01" />
                       </svg>
                     </div>
                   ) : done ? (
@@ -378,7 +387,9 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
                         className={`text-xs leading-snug font-medium ${
                           errored
                             ? "text-[#FF3131]"
-                            : skipped
+                            : warned
+                              ? "text-[#B7791F]"
+                              : skipped
                               ? "text-[#A5AAB5]"
                               : done
                                 ? "text-positive"
