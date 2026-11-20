@@ -26,6 +26,9 @@ app = FastAPI(title="VERITAS inference", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    # Also accept the frontend on any local port (Next.js moves to 3001, 3002…
+    # when 3000 is busy), so the app never fails with "Failed to fetch".
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
