@@ -132,7 +132,7 @@ export default function OverviewPage(): React.ReactElement {
               <img src="/icons/check-icon.svg" alt="verified" width={20} height={20} className="object-contain" />
             </div>
           </div>
-          <p className="text-[11px] text-muted mt-auto">115,081 images · 333,072 faces</p>
+          <p className="text-[11px] text-muted mt-auto">190,335 face crops · official OpenForensics splits</p>
         </div>
 
         {/* Training */}
@@ -144,10 +144,10 @@ export default function OverviewPage(): React.ReactElement {
               </div>
               <span className="title font-semibold text-navy">Training</span>
             </div>
-            <DonutChart percentage={70} color="#3333FF" />
+            <DonutChart percentage={73.6} color="#3333FF" />
           </div>
-          <p className="split-percentage font-bold text-navy">70%</p>
-          <p className="text-[11px] text-muted">49,056 images · 150,784 faces</p>
+          <p className="split-percentage font-bold text-navy">140,002</p>
+          <p className="text-[11px] text-muted">face crops · 73.6% · official Train folder</p>
         </div>
 
         {/* Validation */}
@@ -159,10 +159,10 @@ export default function OverviewPage(): React.ReactElement {
               </div>
               <span className="title font-semibold text-navy">Validation</span>
             </div>
-            <DonutChart percentage={15} color="#9D803E" />
+            <DonutChart percentage={20.7} color="#9D803E" />
           </div>
-          <p className="split-percentage font-bold text-navy">15%</p>
-          <p className="text-[11px] text-muted">10,512 images · 32,407 faces</p>
+          <p className="split-percentage font-bold text-navy">39,428</p>
+          <p className="text-[11px] text-muted">face crops · 20.7% · official Validation folder</p>
         </div>
 
         {/* Testing */}
@@ -174,10 +174,10 @@ export default function OverviewPage(): React.ReactElement {
               </div>
               <span className="title font-semibold text-navy">Testing</span>
             </div>
-            <DonutChart percentage={15} color="#2C8833" />
+            <DonutChart percentage={5.7} color="#2C8833" />
           </div>
-          <p className="split-percentage font-bold text-navy">15%</p>
-          <p className="text-[11px] text-muted">10,513 images · 32,286 faces</p>
+          <p className="split-percentage font-bold text-navy">10,905</p>
+          <p className="text-[11px] text-muted">face crops · 5.7% · official Test folder</p>
         </div>
       </div>
 
@@ -193,7 +193,7 @@ export default function OverviewPage(): React.ReactElement {
               <img src="/icons/database-icon.svg" alt="" width={22} height={22} className="object-contain" />
             }
             title="Dataset"
-            subtitle="Collection and verification"
+            subtitle="Official splits and generated masks"
           />
           <span className="text-muted text-lg flex-shrink-0">→</span>
           <WorkflowStep
@@ -202,7 +202,7 @@ export default function OverviewPage(): React.ReactElement {
               <img src="/icons/settings-icon.svg" alt="" width={22} height={22} className="object-contain" />
             }
             title="Preprocessing"
-            subtitle="Face detection, alignment, and augmentation"
+            subtitle="Stored face crops, 600×600 letterbox, and augmentation"
           />
           <span className="text-muted text-lg flex-shrink-0">→</span>
           <WorkflowStep
@@ -211,7 +211,7 @@ export default function OverviewPage(): React.ReactElement {
               <img src="/icons/box-icon.svg" alt="" width={22} height={22} className="object-contain" />
             }
             title="Configuration & Training"
-            subtitle="Model setup and optimization"
+            subtitle="Two searches, then one fixed configuration"
           />
           <span className="text-muted text-lg flex-shrink-0">→</span>
           <WorkflowStep
@@ -264,7 +264,7 @@ export default function OverviewPage(): React.ReactElement {
             />
             <SopCard
               id="SOP 1.3"
-              label="Hyperparameter optimization"
+              label="Hyperparameter search"
               icon={<img src="/icons/sop1.3-icon.svg" alt="" width={22} height={22} className="object-contain" />}
             />
             <SopCard

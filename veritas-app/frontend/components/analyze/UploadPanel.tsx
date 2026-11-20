@@ -32,7 +32,7 @@ interface PipelineStep {
 const PIPELINE_STEPS: PipelineStep[] = [
   { key: "validation", n: 1, title: "File validation", desc: "Check file format, size and integrity." },
   { key: "face_detection", n: 2, title: "Face detection", desc: "Detect and crop face region(s)." },
-  { key: "preprocessing", n: 3, title: "Preprocessing", desc: "Align, normalize and prepare input." },
+  { key: "preprocessing", n: 3, title: "Preprocessing", desc: "Letterbox to 600×600 and normalize the face crop." },
   { key: "inference", n: 4, title: "Model inference", desc: "Run the trained model for detection and segmentation." },
   { key: "explainability", n: 5, title: "Localization map", desc: "Generate the segmentation mask of the manipulated region." },
 ];
@@ -154,7 +154,7 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
               className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-4 transition-colors min-h-[240px] sm:min-h-[300px] lg:min-h-[360px] p-6
                 ${dragging ? "border-brand bg-[#F1EFFD]" : "border-border bg-[#FAFBFD]"}`}
             >
-              <img src="/icons/image-icon.svg" alt="" width={40} height={40} className="object-contain opacity-70" />
+              <img src="/icons/image-icon-dark.svg" alt="" width={40} height={40} className="object-contain opacity-70" />
               <p className="text-sm font-medium text-navy">Drag an image here</p>
               <div className="flex items-center gap-3 w-full max-w-[200px]">
                 <div className="h-px bg-border flex-1" />
@@ -291,7 +291,7 @@ export function UploadPanel({ file, busy, phase, stageStates, stageDetails, erro
               ? `Live progress for ${file?.name ?? "image"}`
               : hasFailure
                 ? "The analysis could not be completed"
-                : `Steps performed after image upload · ${isBaseline ? "Baseline EfficientNet-B7" : "VERITAS"}`}
+                : `Steps performed after image upload · ${isBaseline ? "Baseline EfficientNetB7" : "VERITAS"}`}
           </p>
 
           <div className="flex flex-col gap-5">

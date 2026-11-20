@@ -46,7 +46,7 @@ def _model_info(key: str) -> dict:
         ckpt = baseline_checkpoint()
         return {
             "key": "baseline",
-            "name": "Baseline EfficientNet-B7",
+            "name": "Baseline EfficientNetB7",
             "checkpoint": ckpt.name if ckpt else None,
             "segmentation": False,
         }

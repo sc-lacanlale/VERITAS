@@ -69,7 +69,7 @@ export default function PreprocessingPage(): React.ReactElement {
           Preprocessing
         </h1>
         <p className="text-sm text-muted mt-1">
-          Face detection, alignment, and augmentation pipeline
+          Training preprocessing in the notebooks and live preprocessing in the app
         </p>
       </div>
 
@@ -77,161 +77,160 @@ export default function PreprocessingPage(): React.ReactElement {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           icon={<img src="/icons/blue-dataset-icon.svg" alt="" width={24} height={24} className="object-contain" />}
-          label="Input images"
-          value="115,081"
-          subtitle="Total images processed"
+          label="Input face crops"
+          value="190,335"
+          subtitle="One stored crop per image"
         />
         <StatsCard
           icon={<img src="/icons/file-icon.svg" alt="" width={24} height={24} className="object-contain" />}
-          label="Faces detected"
-          value="333,072"
-          subtitle="MTCNN detection output"
-        />
-        <StatsCard
-          icon={<img src="/icons/check-icon.svg" alt="" width={24} height={24} className="object-contain" />}
-          label="Success rate"
-          value="98.7%"
-          subtitle="Valid face crops extracted"
+          label="Generated masks"
+          value="190,335"
+          subtitle="600×600 binary localization targets"
         />
         <StatsCard
           icon={<img src="/icons/settings-icon.svg" alt="" width={24} height={24} className="object-contain" />}
           label="Output size"
           value="600×600"
-          subtitle="Letterboxed RGB images"
+          subtitle="Letterboxed RGB, ImageNet-normalized"
+        />
+        <StatsCard
+          icon={<img src="/icons/check-icon.svg" alt="" width={24} height={24} className="object-contain" />}
+          label="Augmentation"
+          value="Train only"
+          subtitle="50% brightness/contrast · 50% flip"
         />
       </div>
 
       {/* Pipeline overview */}
       <div className="bg-white border border-border rounded-xl p-6">
-        <h2 className="text-base font-bold text-navy mb-1">Preprocessing Pipeline</h2>
+        <h2 className="text-base font-bold text-navy mb-1">Training Preprocessing Pipeline</h2>
         <p className="text-xs text-muted mb-5">
-          End-to-end transformation from raw images to model-ready inputs
+          From stored face crops and generated masks to model-ready inputs
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <PipelineStep
             number="Step 1"
-            title="Face Detection"
-            description="Locate and extract facial regions using MTCNN"
+            title="Stored Face Crop"
+            description="Crop box taken from the generated-mask index"
             bg="bg-[#ECF4FE]"
-            icon={<img src="/icons/image-icon.svg" alt="" width={22} height={22} className="object-contain" />}
+            icon={<img src="/icons/image-icon-dark.svg" alt="" width={22} height={22} className="object-contain" />}
             details={[
-              "Multi-task Cascaded Convolutional Networks (MTCNN)",
-              "Detects faces with bounding boxes and landmarks",
-              "Confidence threshold: 0.9 for high precision"
+              "One crop per image (no face detector at training time)",
+              "Paired with its pre-generated 600×600 binary mask",
+              "Label from the folder: Real = 0, Fake = 1"
             ]}
           />
 
           <PipelineStep
             number="Step 2"
-            title="Alignment & Cropping"
-            description="Normalize face orientation using detected landmarks"
+            title="Letterbox & Valid-Canvas Mask"
+            description="Standardize size while preserving aspect ratio"
             bg="bg-[#E9F5F1]"
             icon={<img src="/icons/settings-icon.svg" alt="" width={22} height={22} className="object-contain" />}
             details={[
-              "5-point facial landmarks (eyes, nose, mouth corners)",
-              "Affine transformation for rotation and scale",
-              "Consistent face positioning across all samples"
+              "600×600 letterbox with black padding (no stretching)",
+              "Valid-canvas mask marks the real image pixels",
+              "Padding is excluded from segmentation loss and metrics"
             ]}
           />
 
           <PipelineStep
             number="Step 3"
-            title="Resize & Letterboxing"
-            description="Standardize image dimensions while preserving aspect ratio"
+            title="Normalization & Targets"
+            description="Prepare the RGB tensor and localization target"
             bg="bg-[#FEF4DD]"
             icon={<img src="/icons/box-icon.svg" alt="" width={22} height={22} className="object-contain" />}
             details={[
-              "Target size: 600×600 pixels",
-              "Letterboxing with black padding to avoid distortion",
-              "Maintains facial proportions and features"
+              "ImageNet mean (0.485, 0.456, 0.406) and std (0.229, 0.224, 0.225)",
+              "Mask binarized (pixel value above 127 = manipulated)",
+              "Real images use an all-zero localization target"
             ]}
           />
 
           <PipelineStep
             number="Step 4"
-            title="Data Augmentation"
-            description="Training-time transformations for model robustness"
+            title="Data Augmentation (Train only)"
+            description="Light augmentation that keeps forensic traces intact"
             bg="bg-[#F1EFFD]"
             icon={<img src="/icons/yellow-file-icon.svg" alt="" width={22} height={22} className="object-contain" />}
             details={[
-              "Random horizontal flips (50% probability)",
-              "Rotation: ±15° random angle",
-              "Color jitter: brightness, contrast, saturation"
+              "50% chance: brightness/contrast on the RGB crop only",
+              "Then 50% chance: horizontal flip of crop, mask, and valid-canvas together",
+              "Validation and Test images are not augmented"
             ]}
           />
+
         </div>
       </div>
 
-      {/* MTCNN Configuration */}
+      {/* Live app face detection */}
       <div className="bg-white border border-border rounded-xl p-6">
-        <h2 className="text-base font-bold text-navy mb-1">MTCNN Configuration</h2>
+        <h2 className="text-base font-bold text-navy mb-1">Live App Face Detection</h2>
         <p className="text-xs text-muted mb-4">
-          Face detector parameters and thresholds
+          Used only in the deployed system; training and Test scoring use the stored crops
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-[#F9FAFD] rounded-lg p-4">
-            <p className="text-xs font-bold text-navy mb-2">Detection Thresholds</p>
+            <p className="text-xs font-bold text-navy mb-2">Detection</p>
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted">Stage 1 (P-Net)</p>
-                <p className="text-xs font-semibold text-navy">0.6</p>
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-xs text-muted">Detector</p>
+                <p className="text-xs font-semibold text-navy text-right">MediaPipe BlazeFace</p>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted">Stage 2 (R-Net)</p>
-                <p className="text-xs font-semibold text-navy">0.7</p>
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-xs text-muted">Detection threshold</p>
+                <p className="text-xs font-semibold text-navy text-right">0.5</p>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted">Stage 3 (O-Net)</p>
-                <p className="text-xs font-semibold text-navy">0.9</p>
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-xs text-muted">Faces analyzed</p>
+                <p className="text-xs font-semibold text-navy text-right">Every detected face</p>
               </div>
             </div>
           </div>
-
           <div className="bg-[#F9FAFD] rounded-lg p-4">
-            <p className="text-xs font-bold text-navy mb-2">Scale Parameters</p>
+            <p className="text-xs font-bold text-navy mb-2">Face-quality check</p>
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted">Min face size</p>
-                <p className="text-xs font-semibold text-navy">40 pixels</p>
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-xs text-muted">Min. detector confidence</p>
+                <p className="text-xs font-semibold text-navy text-right">0.60</p>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted">Scale factor</p>
-                <p className="text-xs font-semibold text-navy">0.709</p>
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-xs text-muted">Min. face size</p>
+                <p className="text-xs font-semibold text-navy text-right">8% of image's larger side</p>
               </div>
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted">Max detections</p>
-                <p className="text-xs font-semibold text-navy">10 per image</p>
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-xs text-muted">If no face is clear</p>
+                <p className="text-xs font-semibold text-navy text-right">Insufficient facial exposure</p>
               </div>
             </div>
           </div>
-
           <div className="bg-[#F9FAFD] rounded-lg p-4">
-            <p className="text-xs font-bold text-navy mb-2">Post-processing</p>
+            <p className="text-xs font-bold text-navy mb-2">Cropping</p>
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-muted">NMS threshold</p>
-                <p className="text-xs font-semibold text-navy">0.7</p>
-              </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-3">
                 <p className="text-xs text-muted">Margin expansion</p>
-                <p className="text-xs font-semibold text-navy">10%</p>
+                <p className="text-xs font-semibold text-navy text-right">10% per side</p>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-3">
+                <p className="text-xs text-muted">Letterbox</p>
+                <p className="text-xs font-semibold text-navy text-right">600×600</p>
+              </div>
+              <div className="flex justify-between items-center gap-3">
                 <p className="text-xs text-muted">Device</p>
-                <p className="text-xs font-semibold text-navy">CUDA</p>
+                <p className="text-xs font-semibold text-navy text-right">GPU if CUDA is available, else CPU</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Augmentation examples */}
+      {/* Augmentation */}
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Data Augmentation Strategy</h2>
         <p className="text-xs text-muted mb-4">
-          Training-time transformations to improve generalization
+          Training-time transformations used by all four models
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -239,28 +238,14 @@ export default function PreprocessingPage(): React.ReactElement {
           <div className="bg-[#ECF4FE] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <img src="/icons/settings-icon.svg" alt="" width={22} height={22} className="object-contain" />
-              <p className="text-sm font-bold text-navy">Geometric Transforms</p>
+              <p className="text-sm font-bold text-navy">Geometric Transform</p>
             </div>
             <div className="space-y-2">
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-brand mt-1.5 flex-shrink-0"></div>
                 <div>
                   <p className="text-xs font-semibold text-navy">Horizontal flip</p>
-                  <p className="text-[11px] text-muted">50% probability, mirror faces</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand mt-1.5 flex-shrink-0"></div>
-                <div>
-                  <p className="text-xs font-semibold text-navy">Random rotation</p>
-                  <p className="text-[11px] text-muted">±15° range, simulate head tilt</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand mt-1.5 flex-shrink-0"></div>
-                <div>
-                  <p className="text-xs font-semibold text-navy">Slight zoom</p>
-                  <p className="text-[11px] text-muted">90-110% scale variation</p>
+                  <p className="text-[11px] text-muted">50% probability; crop, mask, and valid-canvas flipped together</p>
                 </div>
               </div>
             </div>
@@ -270,28 +255,14 @@ export default function PreprocessingPage(): React.ReactElement {
           <div className="bg-[#E9F5F1] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <img src="/icons/yellow-file-icon.svg" alt="" width={22} height={22} className="object-contain" />
-              <p className="text-sm font-bold text-navy">Photometric Transforms</p>
+              <p className="text-sm font-bold text-navy">Photometric Transform</p>
             </div>
             <div className="space-y-2">
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-positive mt-1.5 flex-shrink-0"></div>
                 <div>
-                  <p className="text-xs font-semibold text-navy">Brightness jitter</p>
-                  <p className="text-[11px] text-muted">±20% intensity variation</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-positive mt-1.5 flex-shrink-0"></div>
-                <div>
-                  <p className="text-xs font-semibold text-navy">Contrast adjustment</p>
-                  <p className="text-[11px] text-muted">±15% dynamic range</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-positive mt-1.5 flex-shrink-0"></div>
-                <div>
-                  <p className="text-xs font-semibold text-navy">Saturation shift</p>
-                  <p className="text-[11px] text-muted">±10% color intensity</p>
+                  <p className="text-xs font-semibold text-navy">Brightness/contrast</p>
+                  <p className="text-[11px] text-muted">50% probability; gain ±15% and offset ±12 intensity levels, RGB crop only</p>
                 </div>
               </div>
             </div>
@@ -300,8 +271,8 @@ export default function PreprocessingPage(): React.ReactElement {
 
         <div className="mt-4 p-3 bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-lg">
           <p className="text-xs text-muted">
-            <strong className="text-navy">Note:</strong> Augmentation is applied only during training. 
-            Validation and test sets use original preprocessed images without augmentation.
+            <strong className="text-navy">Note:</strong> Augmentation is applied only during training.
+            Validation and test sets use the preprocessed images without augmentation.
           </p>
         </div>
       </div>
@@ -310,7 +281,7 @@ export default function PreprocessingPage(): React.ReactElement {
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Quality Control</h2>
         <p className="text-xs text-muted mb-4">
-          Automated filtering for preprocessing pipeline integrity
+          Checks applied to the data and generated masks
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -319,28 +290,26 @@ export default function PreprocessingPage(): React.ReactElement {
               <img src="/icons/check-icon.svg" alt="" width={16} height={16} className="object-contain" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-navy">Face size validation</p>
-              <p className="text-[11px] text-muted mt-0.5">Reject faces smaller than 40×40 pixels</p>
+              <p className="text-xs font-semibold text-navy">Mask audit (Train/Validation)</p>
+              <p className="text-[11px] text-muted mt-0.5">Coverage and sample plausibility checked; Test not used for mask decisions</p>
             </div>
           </div>
-
           <div className="flex items-start gap-2 p-3 bg-[#E9F5F1] rounded-lg">
             <div className="w-6 h-6 rounded-lg bg-white border border-[#C4F0E3] flex items-center justify-center flex-shrink-0 mt-0.5">
               <img src="/icons/check-icon.svg" alt="" width={16} height={16} className="object-contain" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-navy">Confidence filtering</p>
-              <p className="text-[11px] text-muted mt-0.5">Keep only high-confidence detections (≥0.9)</p>
+              <p className="text-xs font-semibold text-navy">Empty Fake masks</p>
+              <p className="text-[11px] text-muted mt-0.5">Kept for classification, skipped in the segmentation loss</p>
             </div>
           </div>
-
           <div className="flex items-start gap-2 p-3 bg-[#E9F5F1] rounded-lg">
             <div className="w-6 h-6 rounded-lg bg-white border border-[#C4F0E3] flex items-center justify-center flex-shrink-0 mt-0.5">
               <img src="/icons/check-icon.svg" alt="" width={16} height={16} className="object-contain" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-navy">Duplicate removal</p>
-              <p className="text-[11px] text-muted mt-0.5">Filter near-identical frames from videos</p>
+              <p className="text-xs font-semibold text-navy">No class-balance discarding</p>
+              <p className="text-[11px] text-muted mt-0.5">All provided image entries are used</p>
             </div>
           </div>
         </div>

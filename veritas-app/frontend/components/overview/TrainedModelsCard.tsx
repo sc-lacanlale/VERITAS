@@ -71,16 +71,16 @@ export function TrainedModelsCard(): React.ReactElement {
             </div>
             <StatusPill {...veritas} />
           </div>
-          <p className="text-[11px] text-muted leading-snug">Multi-stream EfficientNet-B7 + DeepLabV3+ · score and localization mask</p>
+          <p className="text-[11px] text-muted leading-snug">RGB EfficientNet-B7 + SRM/FFT late fusion + DeepLabV3+ · score and localization mask</p>
         </div>
 
         {/* Baseline */}
         <div className="rounded-xl border border-border bg-[#FAFBFD] p-4 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-sm font-bold text-navy whitespace-nowrap">Baseline B7</span>
+            <span className="text-sm font-bold text-navy whitespace-nowrap">Baseline EfficientNetB7</span>
             <StatusPill {...baseline} />
           </div>
-          <p className="text-[11px] text-muted leading-snug">RGB-only EfficientNet-B7 · score only, no mask</p>
+          <p className="text-[11px] text-muted leading-snug">RGB-only, classification only · score, no mask</p>
         </div>
       </div>
     </div>

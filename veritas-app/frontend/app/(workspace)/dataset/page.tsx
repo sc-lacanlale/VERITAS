@@ -84,7 +84,7 @@ export default function DatasetPage(): React.ReactElement {
           Dataset
         </h1>
         <p className="text-sm text-muted mt-1">
-          Curated training data for facial manipulation detection
+          OpenForensics dataset used for training, validation, and testing
         </p>
       </div>
 
@@ -93,85 +93,80 @@ export default function DatasetPage(): React.ReactElement {
         <StatCard
           bg="bg-white border border-border"
           icon={<img src="/icons/blue-dataset-icon.svg" alt="" width={24} height={24} className="object-contain" />}
-          label="Total images"
-          value="115,081"
-          subtitle="Across all source datasets"
+          label="Total face crops"
+          value="190,335"
+          subtitle="One stored face crop per image"
         />
         <StatCard
           bg="bg-white border border-border"
           icon={<img src="/icons/file-icon.svg" alt="" width={24} height={24} className="object-contain" />}
-          label="Total faces"
-          value="333,072"
-          subtitle="Detected and aligned"
+          label="Generated masks"
+          value="190,335"
+          subtitle="Pre-generated 600×600 binary localization targets"
         />
         <StatCard
           bg="bg-[#EAF3FE] border border-[#DADADA]"
           icon={<img src="/icons/check-icon.svg" alt="" width={24} height={24} className="object-contain" />}
-          label="Real faces"
-          value="166,536"
-          subtitle="50% of total dataset"
+          label="Real (Test set)"
+          value="5,413"
+          subtitle="49.6% of the 10,905 Test images"
         />
         <StatCard
           bg="bg-[#FEEBEA] border border-[#DADADA]"
           icon={<img src="/icons/red-image-icon.svg" alt="" width={24} height={24} className="object-contain" />}
-          label="Manipulated faces"
-          value="166,536"
-          subtitle="50% of total dataset"
+          label="Fake (Test set)"
+          value="5,492"
+          subtitle="50.4% of the 10,905 Test images"
         />
       </div>
 
       {/* Split distribution */}
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Data Split Distribution</h2>
-        <p className="text-xs text-muted mb-5">70% training, 15% validation, 15% testing</p>
+        <p className="text-xs text-muted mb-5">Official OpenForensics Train, Validation, and Test folders (no random re-split)</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Training */}
           <div className="bg-[#ECF4FE] rounded-xl p-5 flex flex-col items-center text-center gap-3">
-            <DonutChart percentage={70} color="#3333FF" size={64} />
+            <DonutChart percentage={73.6} color="#3333FF" size={64} />
             <div>
-              <p className="text-xl font-bold text-navy">70%</p>
+              <p className="text-xl font-bold text-navy">140,002</p>
               <p className="text-xs font-semibold text-navy mt-1">Training</p>
             </div>
             <div className="w-full border-t border-[#DADADA] pt-3 mt-1">
-              <p className="text-xs text-navy font-semibold">49,056 images</p>
-              <p className="text-[11px] text-muted mt-0.5">150,784 faces detected</p>
+              <p className="text-xs text-navy font-semibold">73.6% of 190,335 face crops</p>
+              <p className="text-[11px] text-muted mt-0.5">Model learning (weight updates)</p>
             </div>
           </div>
-
-          {/* Validation */}
           <div className="bg-[#FEF4DD] rounded-xl p-5 flex flex-col items-center text-center gap-3">
-            <DonutChart percentage={15} color="#9D803E" size={64} />
+            <DonutChart percentage={20.7} color="#9D803E" size={64} />
             <div>
-              <p className="text-xl font-bold text-navy">15%</p>
+              <p className="text-xl font-bold text-navy">39,428</p>
               <p className="text-xs font-semibold text-navy mt-1">Validation</p>
             </div>
             <div className="w-full border-t border-[#DADADA] pt-3 mt-1">
-              <p className="text-xs text-navy font-semibold">10,512 images</p>
-              <p className="text-[11px] text-muted mt-0.5">32,407 faces detected</p>
+              <p className="text-xs text-navy font-semibold">20.7% of 190,335 face crops</p>
+              <p className="text-[11px] text-muted mt-0.5">Monitoring and checkpoint selection (Validation accuracy)</p>
             </div>
           </div>
-
-          {/* Testing */}
           <div className="bg-[#E9F5F1] rounded-xl p-5 flex flex-col items-center text-center gap-3">
-            <DonutChart percentage={15} color="#2C8833" size={64} />
+            <DonutChart percentage={5.7} color="#2C8833" size={64} />
             <div>
-              <p className="text-xl font-bold text-navy">15%</p>
+              <p className="text-xl font-bold text-navy">10,905</p>
               <p className="text-xs font-semibold text-navy mt-1">Testing</p>
             </div>
             <div className="w-full border-t border-[#DADADA] pt-3 mt-1">
-              <p className="text-xs text-navy font-semibold">10,513 images</p>
-              <p className="text-[11px] text-muted mt-0.5">32,286 faces detected</p>
+              <p className="text-xs text-navy font-semibold">5.7% of 190,335 face crops</p>
+              <p className="text-[11px] text-muted mt-0.5">Final evaluation only</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Source datasets */}
+      {/* Source dataset */}
       <div className="bg-white border border-border rounded-xl p-6">
-        <h2 className="text-base font-bold text-navy mb-1">Source Datasets</h2>
+        <h2 className="text-base font-bold text-navy mb-1">Data Source</h2>
         <p className="text-xs text-muted mb-4">
-          Aggregated from established facial manipulation benchmarks
+          A single dataset is used for every experiment
         </p>
 
         <div className="overflow-x-auto">
@@ -180,45 +175,17 @@ export default function DatasetPage(): React.ReactElement {
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-3 text-xs font-bold text-navy">Dataset</th>
                 <th className="text-center py-3 px-3 text-xs font-bold text-navy">Images</th>
-                <th className="text-center py-3 px-3 text-xs font-bold text-navy">Faces</th>
+                <th className="text-center py-3 px-3 text-xs font-bold text-navy">Face crops</th>
                 <th className="text-left py-3 px-3 text-xs font-bold text-navy">Manipulation type</th>
               </tr>
             </thead>
             <tbody>
               <DatasetSourceRow
                 name="OpenForensics"
-                description="Multi-ethnic deepfake dataset"
-                images="~38,000"
-                faces="~110,000"
-                manipulation="DeepFake, Face2Face, FaceSwap, NeuralTextures"
-              />
-              <DatasetSourceRow
-                name="FaceForensics++"
-                description="High-quality manipulation benchmark"
-                images="~50,000"
-                faces="~145,000"
-                manipulation="DeepFakes, Face2Face, FaceSwap, NeuralTextures"
-              />
-              <DatasetSourceRow
-                name="WildDeepfake"
-                description="In-the-wild collected videos"
-                images="~15,000"
-                faces="~45,000"
-                manipulation="Real-world deepfakes (various methods)"
-              />
-              <DatasetSourceRow
-                name="Celeb-DF"
-                description="Celebrity impersonation dataset"
-                images="~10,000"
-                faces="~28,000"
-                manipulation="High-quality celebrity deepfakes"
-              />
-              <DatasetSourceRow
-                name="DFDC Preview"
-                description="Deepfake Detection Challenge subset"
-                images="~2,081"
-                faces="~5,072"
-                manipulation="Mixed deepfake techniques"
+                description="Real and Fake folders supply the labels (Real = 0, Fake = 1)"
+                images="190,335"
+                faces="190,335"
+                manipulation="Face swapping, face reenactment, generative inpainting"
               />
             </tbody>
           </table>
@@ -229,26 +196,26 @@ export default function DatasetPage(): React.ReactElement {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Class balance */}
         <div className="bg-white border border-border rounded-xl p-6">
-          <h2 className="text-base font-bold text-navy mb-1">Class Balance</h2>
-          <p className="text-xs text-muted mb-4">Equal representation of real and manipulated samples</p>
+          <h2 className="text-base font-bold text-navy mb-1">Test Set Class Balance</h2>
+          <p className="text-xs text-muted mb-4">No samples were discarded to force class balance</p>
 
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1 h-8 bg-[#EAF3FE] rounded-lg flex items-center justify-center">
-              <p className="text-xs font-bold text-brand">50%</p>
+          <div className="flex items-center gap-1 mb-4">
+            <div className="h-8 bg-[#EAF3FE] rounded-lg flex items-center justify-center" style={{ flex: 49.6 }}>
+              <p className="text-xs font-bold text-brand">49.6%</p>
             </div>
-            <div className="flex-1 h-8 bg-[#FEEBEA] rounded-lg flex items-center justify-center">
-              <p className="text-xs font-bold text-danger">50%</p>
+            <div className="h-8 bg-[#FEEBEA] rounded-lg flex items-center justify-center" style={{ flex: 50.4 }}>
+              <p className="text-xs font-bold text-danger">50.4%</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-[#3333FF] rounded-sm flex-shrink-0"></div>
-              <p className="text-xs text-navy">166,536 real faces</p>
+              <p className="text-xs text-navy">5,413 Real</p>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-[#C05852] rounded-sm flex-shrink-0"></div>
-              <p className="text-xs text-navy">166,536 fake faces</p>
+              <p className="text-xs text-navy">5,492 Fake (all with nonempty masks)</p>
             </div>
           </div>
         </div>
@@ -264,8 +231,8 @@ export default function DatasetPage(): React.ReactElement {
                 <img src="/icons/check-icon.svg" alt="" width={16} height={16} className="object-contain" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-navy">Face detection</p>
-                <p className="text-[11px] text-muted">MTCNN with 224×224 letterboxed output</p>
+                <p className="text-xs font-semibold text-navy">Face crop</p>
+                <p className="text-[11px] text-muted">Stored crop box from the generated-mask index (one crop per image)</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -273,8 +240,8 @@ export default function DatasetPage(): React.ReactElement {
                 <img src="/icons/check-icon.svg" alt="" width={16} height={16} className="object-contain" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-navy">Alignment & normalization</p>
-                <p className="text-[11px] text-muted">Facial landmarks for consistent orientation</p>
+                <p className="text-xs font-semibold text-navy">Letterbox & normalization</p>
+                <p className="text-[11px] text-muted">600×600 letterbox with ImageNet mean/std; a valid-canvas mask excludes padding</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -282,8 +249,17 @@ export default function DatasetPage(): React.ReactElement {
                 <img src="/icons/check-icon.svg" alt="" width={16} height={16} className="object-contain" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-navy">Augmentation</p>
-                <p className="text-[11px] text-muted">Rotation, flips, color jitter for robustness</p>
+                <p className="text-xs font-semibold text-navy">Generated masks</p>
+                <p className="text-[11px] text-muted">Train/Validation masks audited; the Test set was not used for mask-quality decisions</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-lg bg-[#E9F5F1] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <img src="/icons/check-icon.svg" alt="" width={16} height={16} className="object-contain" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-navy">Augmentation (Train only)</p>
+                <p className="text-[11px] text-muted">50% brightness/contrast, then 50% horizontal flip of the crop, mask, and valid-canvas mask</p>
               </div>
             </div>
           </div>
@@ -294,7 +270,7 @@ export default function DatasetPage(): React.ReactElement {
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Sample Gallery</h2>
         <p className="text-xs text-muted mb-4">
-          Representative examples from the aggregated dataset
+          Representative examples from the OpenForensics dataset
         </p>
 
         <div className="bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-xl p-12 flex flex-col items-center justify-center text-center gap-3">

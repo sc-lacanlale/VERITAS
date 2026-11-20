@@ -34,7 +34,7 @@ const OPTIONS: ModelOption[] = [
   },
   {
     key: "baseline",
-    title: "Baseline B7",
+    title: "Baseline EfficientNetB7",
     subtitle: "Classifies each face as real or fake",
     streams: ["RGB"],
     outputs: [
