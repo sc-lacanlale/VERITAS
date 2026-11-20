@@ -93,11 +93,29 @@ class VeritasInference:
         return tensors, canvases, metas, ms
 
     @torch.no_grad()
-    def _run_model(self, tensors):
+    def _run_model(self, tensors, metas=None):
         t1 = time.perf_counter()
         batch = torch.stack(tensors, 0).to(self.device)
         self.model.eval()
-        outputs = self.model(batch)
+        if getattr(self.model, "requires_valid_mask", False):
+            if metas is None or len(metas) != len(tensors):
+                raise ValueError("This model requires letterbox metadata for every face")
+            height, width = batch.shape[-2:]
+            valid_mask = batch.new_zeros((len(tensors), 1, height, width))
+            for i, meta in enumerate(metas):
+                try:
+                    geometry = [float(meta[key]) for key in ("left", "top", "nw", "nh")]
+                except (KeyError, TypeError, ValueError) as error:
+                    raise ValueError("Letterbox metadata must provide left, top, nw, and nh") from error
+                if not all(np.isfinite(value) and value.is_integer() for value in geometry):
+                    raise ValueError("Letterbox metadata must contain finite integer pixel geometry")
+                left, top, nw, nh = map(int, geometry)
+                if left < 0 or top < 0 or nw <= 0 or nh <= 0 or left + nw > width or top + nh > height:
+                    raise ValueError("Letterbox metadata lies outside the model input canvas")
+                valid_mask[i, :, top:top + nh, left:left + nw] = 1
+            outputs = self.model(batch, valid_mask=valid_mask)
+        else:
+            outputs = self.model(batch)
         probs = outputs["fake_probability"].detach().cpu().numpy().reshape(-1)
         seg = outputs.get("segmentation_prob")
         if seg is not None:
@@ -158,7 +176,7 @@ class VeritasInference:
         stages["preprocessing"]["faces_prepared"] = len(tensors)
         stages["preprocessing"]["ms"] = prep_ms
 
-        probs, seg, infer_ms = self._run_model(tensors)
+        probs, seg, infer_ms = self._run_model(tensors, metas)
         stages["inference"]["faces_scored"] = int(probs.shape[0])
         stages["inference"]["ms"] = infer_ms
         stages["explainability"]["available"] = bool(self.emit_masks and seg is not None)
@@ -199,7 +217,7 @@ class VeritasInference:
         yield "preprocessing", dict(stages["preprocessing"])
 
         # Stage 3: model inference.
-        probs, seg, infer_ms = self._run_model(tensors)
+        probs, seg, infer_ms = self._run_model(tensors, metas)
         stages["inference"]["faces_scored"] = int(probs.shape[0])
         stages["inference"]["ms"] = infer_ms
         stages["explainability"]["available"] = bool(self.emit_masks and seg is not None)
