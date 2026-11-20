@@ -69,7 +69,7 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
         </div>
         <div>
           <p className="pr-label">FACE DETECTOR</p>
-          <p className="pr-value">{result.detector ?? "—"}</p>
+          <p className="pr-value">{detectorLabel(result.detector)}</p>
         </div>
         <div>
           <p className="pr-label">MODEL</p>
@@ -122,7 +122,13 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
                 <td>{face.crop && <img src={face.crop} alt="" className="pr-crop" />}</td>
                 <td>{face.classification.fake_probability.toFixed(3)}</td>
                 <td className={isFake ? "pr-fake" : "pr-real"}>{isFake ? "FAKE" : "REAL"}</td>
-                <td>{isBaseline ? "N/A (no mask)" : isFake ? "Manipulated" : "Zero Mask"}</td>
+                <td>
+                  {isBaseline
+                    ? "N/A (no mask)"
+                    : isFake
+                      ? `Mask generated${typeof face.segmentation?.coverage === "number" ? ` · ${(face.segmentation.coverage * 100).toFixed(1)}% of crop` : ""}`
+                      : "Zero Mask"}
+                </td>
               </tr>
             );
           })}
@@ -152,4 +158,14 @@ export function PrintReport({ result, fileName }: PrintReportProps): React.React
       </div>
     </div>
   );
+}
+
+// Readable names for the backend's detector identifiers.
+function detectorLabel(name?: string | null): string {
+  if (!name) return "—";
+  const known: Record<string, string> = {
+    mediapipe_tasks_blaze_face: "MediaPipe BlazeFace",
+    opencv_haar: "OpenCV Haar cascade",
+  };
+  return known[name] ?? name;
 }

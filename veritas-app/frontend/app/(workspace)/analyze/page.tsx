@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { fetchHealth, predictImageStream, type StreamStageName } from "@/lib/api";
+import { fetchHealth, predictImageStream, SERVER_UNREACHABLE_MESSAGE, type StreamStageName } from "@/lib/api";
 import type { ModelKey, PredictionResponse } from "@/types/veritas";
 import { UploadPanel } from "@/components/analyze/UploadPanel";
 import { AnalysisResults } from "@/components/analyze/AnalysisResults";
@@ -27,6 +27,8 @@ export interface BaselineStatus {
   /** null = still checking (or backend unreachable). */
   available: boolean | null;
   checkpoint: string | null;
+  /** True when the server did not answer the health check. */
+  serverUnreachable?: boolean;
 }
 
 const NO_NOTICE: NoticeState = { open: false, tone: "info", title: "", message: "" };
@@ -131,6 +133,7 @@ export default function AnalyzePage(): React.ReactElement {
       setBaseline({
         available: h?.baseline ? Boolean(h.baseline.available) : false,
         checkpoint: h?.baseline?.checkpoint ?? null,
+        serverUnreachable: h === null,
       });
     });
     return () => {
@@ -229,7 +232,7 @@ export default function AnalyzePage(): React.ReactElement {
       }
       case "preprocessing": {
         const n = num("faces_prepared");
-        return `${n} face${n === 1 ? "" : "s"} aligned · ${num("ms")} ms`;
+        return `${n} face${n === 1 ? "" : "s"} cropped and letterboxed · ${num("ms")} ms`;
       }
       case "inference": {
         const n = num("faces_scored");
@@ -345,7 +348,7 @@ export default function AnalyzePage(): React.ReactElement {
             variant: "card",
             title: "Face not clear enough",
             message:
-              "A face was found, but too much of it is covered or turned away to analyze. Upload an image with an unobstructed, front-facing face.",
+              "A face was found, but it is too small or unclear to analyze reliably. Upload an image where the face is larger and clearly visible.",
             icon: "no-face-icon",
           });
         } else {
@@ -354,7 +357,7 @@ export default function AnalyzePage(): React.ReactElement {
             variant: "card",
             title: "No face detected",
             message:
-              "VERITAS could not find a face in this image. Upload an image where at least one face is clearly visible.",
+              "The face detector could not find a face in this image. Upload an image where at least one face is clearly visible.",
             icon: "no-face-icon",
           });
         }
@@ -384,6 +387,9 @@ export default function AnalyzePage(): React.ReactElement {
           STEP_ORDER.find((k) => prev[k] === "active") ??
           STEP_ORDER.find((k) => prev[k] === "waiting") ??
           "inference";
+        if (e instanceof Error && e.message === SERVER_UNREACHABLE_MESSAGE) {
+          setStageDetails((d) => ({ ...d, [failingKey]: "Server unreachable" }));
+        }
         return buildFailedStages(failingKey, prev);
       });
       setInlineError({

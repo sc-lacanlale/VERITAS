@@ -90,7 +90,7 @@ html.dark .model-glyph [stroke="#C9D3FB" i] { stroke: #34447A; }
 
 /* Navy line icons would disappear on dark surfaces; lighten them. */
 html.dark img[src*="file-icon.svg"], html.dark img[src*="blue-dataset-icon.svg"], html.dark img[src*="no-face-icon.svg"], html.dark img[src*="info-icon.svg"],
-html.dark img[src*="training-icon.svg"], html.dark img[src*="testing-icon.svg"], html.dark img[src*="evaluation-icon.svg"] { filter: invert(1) hue-rotate(180deg) brightness(1.15); }
+html.dark img[src*="training-icon.svg"], html.dark img[src*="testing-icon.svg"], html.dark img[src*="evaluation-icon.svg"], html.dark img[src*="navy-"] { filter: invert(1) hue-rotate(180deg) brightness(1.15); }
 
 /* Brand-blue icons are visible but dim on dark tiles; lift them a little. */
 html.dark img[src*="/sop"], html.dark img[src*="icon clock.svg"], html.dark img[src*="icon face-id.svg"], html.dark img[src*="icon circle-check.svg"],

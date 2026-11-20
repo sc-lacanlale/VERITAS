@@ -60,12 +60,34 @@ def load_baseline(checkpoint_path: Path, device_pref: str) -> Tuple[nn.Module, t
         if state is None:
             raise RuntimeError("Baseline checkpoint does not contain model_state_dict")
         state = _strip_module(state)
-        # Notebook baseline layout is features.* ; a VERITASModel(False, False) run saves encoder.*
-        if any(k.startswith("encoder.") for k in state):
-            model: nn.Module = VERITASModel(multi_stream=False, segmentation=False)
+        exp_cfg = (ckpt.get("exp_cfg") or {}) if isinstance(ckpt, dict) else {}
+        version = exp_cfg.get("implementation_version")
+        strict = False
+        if version == "ow_v3":
+            # OW v3 Baseline (OWV3_01): RGB-only VERITASV3, built from the checkpoint's own metadata.
+            from .architecture_v3 import VERITASV3
+
+            fields = ("multi_stream", "segmentation", "fusion", "color_srm", "frequency", "pooling", "decoder")
+            absent = [f for f in fields if f not in exp_cfg]
+            if absent:
+                raise RuntimeError(f"Incomplete ow_v3 baseline metadata: {absent}")
+            if exp_cfg["multi_stream"] or exp_cfg["segmentation"]:
+                raise RuntimeError("Checkpoint is not an RGB-only baseline (multi_stream/segmentation is on)")
+            model: nn.Module = VERITASV3(pretrained=False, **{f: exp_cfg[f] for f in fields})
+            strict = True
+        elif version == "ow_v2":
+            from .architecture_v2 import VERITASV2
+
+            model = VERITASV2(multi_stream=False, segmentation=False, pretrained=False, fusion=exp_cfg.get("fusion", "rgb"))
+            strict = True
+        # Older layouts: notebook baseline saves features.* ; a VERITASModel(False, False) run saves encoder.*
+        elif any(k.startswith("encoder.") for k in state):
+            model = VERITASModel(multi_stream=False, segmentation=False)
         else:
             model = BaselineEffNet()
         missing, unexpected = model.load_state_dict(state, strict=False)
+        if strict and unexpected:
+            raise RuntimeError(f"Baseline checkpoint has {len(unexpected)} unexpected weights, e.g. {unexpected[:3]}")
         if missing:
             raise RuntimeError(f"Baseline checkpoint is missing {len(missing)} weights, e.g. {missing[:3]}")
         if unexpected:

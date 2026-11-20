@@ -16,6 +16,9 @@ export type HealthInfo = {
   };
 };
 
+export const SERVER_UNREACHABLE_MESSAGE =
+  "Could not reach the VERITAS analysis server. Check your internet connection and try again. If the problem continues, the server may be temporarily unavailable.";
+
 export async function fetchHealth(): Promise<HealthInfo | null> {
   try {
     const response = await fetch(`${BACKEND_URL}/health`);
@@ -80,11 +83,17 @@ export async function predictImageStream(
   // Omitted = backend default (VERITAS), same as before.
   if (model) formData.append("model", model);
 
-  const response = await fetch(`${BACKEND_URL}/predict/stream`, {
-    method: "POST",
-    body: formData,
-    headers: { Accept: "text/event-stream" },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BACKEND_URL}/predict/stream`, {
+      method: "POST",
+      body: formData,
+      headers: { Accept: "text/event-stream" },
+    });
+  } catch {
+    // Network-level failure: the analysis server is not running or unreachable.
+    throw new Error(SERVER_UNREACHABLE_MESSAGE);
+  }
 
   if (!response.ok || !response.body) {
     let message = "Prediction failed";

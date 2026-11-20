@@ -48,8 +48,7 @@ export function SummaryReportModal({
           </div>
           <div className="flex items-start gap-3">
             <div className="text-right text-[11px] text-[#c9d2e3]">
-              <p>Sample timestamp: {timestamp}</p>
-              <p>Sample case hash: 0x8F2A...9C1B</p>
+              <p>Analysis timestamp: {timestamp}</p>
             </div>
             <button onClick={onClose} className="text-[#c9d2e3] hover:text-white">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -82,7 +81,7 @@ export function SummaryReportModal({
                 <MetaBox label="Faces Detected" value={String(result.faces.length)} />
                 <MetaBox label="Model inference time" value={inferenceMs !== null ? `${inferenceMs} ms` : "—"} />
                 <MetaBox label="Flagged as manipulated" value={String(fakeCount)} />
-                <MetaBox label="Detector" value={result.detector ?? "—"} />
+                <MetaBox label="Detector" value={detectorLabel(result.detector)} />
                 <MetaBox label="Model" value={modelName} />
                 <MetaBox label="Checkpoint" value={result.model?.checkpoint ?? "—"} />
               </div>
@@ -123,7 +122,11 @@ export function SummaryReportModal({
                           </span>
                         </td>
                         <td className="px-4 py-3 text-muted text-xs">
-                          {isBaseline ? "N/A (no mask)" : isFake ? "Manipulated" : "Zero Mask"}
+                          {isBaseline
+                            ? "N/A (no mask)"
+                            : isFake
+                              ? `Mask generated${typeof face.segmentation?.coverage === "number" ? ` · ${(face.segmentation.coverage * 100).toFixed(1)}% of crop` : ""}`
+                              : "Zero Mask"}
                         </td>
                       </tr>
                     );
@@ -134,11 +137,7 @@ export function SummaryReportModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-end justify-between gap-4 pt-2">
-            <div>
-              <p className="text-[11px] text-muted mb-1">Verification Signature · placeholder</p>
-              <div className="w-48 h-10 border border-border rounded-lg bg-[#FAFBFD]" />
-            </div>
+          <div className="flex items-end justify-end gap-4 pt-2">
             <button
               onClick={handlePrint}
               className="flex items-center gap-2 bg-brand text-white px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-[#2222cc] transition-colors"
@@ -156,6 +155,16 @@ export function SummaryReportModal({
     </div>
     </>
   );
+}
+
+// Readable names for the backend's detector identifiers.
+function detectorLabel(name?: string | null): string {
+  if (!name) return "—";
+  const known: Record<string, string> = {
+    mediapipe_tasks_blaze_face: "MediaPipe BlazeFace",
+    opencv_haar: "OpenCV Haar cascade",
+  };
+  return known[name] ?? name;
 }
 
 function MetaBox({ label, value }: { label: string; value: string }): React.ReactElement {

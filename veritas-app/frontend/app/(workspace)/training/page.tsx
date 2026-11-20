@@ -107,7 +107,7 @@ export default function TrainingPage(): React.ReactElement {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white border border-border rounded-xl p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <img src="/icons/training-icon.svg" alt="" width={24} height={24} className="object-contain" />
+            <img src="/icons/navy-training-icon.svg" alt="" width={24} height={24} className="object-contain" />
             <p className="text-xs font-semibold text-navy">Total epochs</p>
           </div>
           <p className="text-2xl font-extrabold text-navy tracking-tight">3</p>
@@ -125,7 +125,7 @@ export default function TrainingPage(): React.ReactElement {
 
         <div className="bg-white border border-border rounded-xl p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <img src="/icons/testing-icon.svg" alt="" width={24} height={24} className="object-contain" />
+            <img src="/icons/navy-chart-icon.svg" alt="" width={24} height={24} className="object-contain" />
             <p className="text-xs font-semibold text-navy">Learning rate</p>
           </div>
           <p className="text-2xl font-extrabold text-navy tracking-tight">1e-4</p>
@@ -134,7 +134,7 @@ export default function TrainingPage(): React.ReactElement {
 
         <div className="bg-white border border-border rounded-xl p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <img src="/icons/box-icon.svg" alt="" width={24} height={24} className="object-contain" />
+            <img src="/icons/navy-box-icon.svg" alt="" width={24} height={24} className="object-contain" />
             <p className="text-xs font-semibold text-navy">Hardware</p>
           </div>
           <p className="text-2xl font-extrabold text-navy tracking-tight">T4</p>

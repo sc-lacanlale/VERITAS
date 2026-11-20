@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { FaceResult } from "@/types/veritas";
 
 interface SelectedFaceViewProps {
@@ -16,7 +17,8 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
   // Prefer the mask-overlay crop for fakes, otherwise the plain crop
   const cropMask = face.segmentation?.crop_mask;
   const crop = face.crop;
-  const imgSrc = cropMask || crop || undefined;
+  const [showOverlay, setShowOverlay] = useState(true);
+  const imgSrc = (showOverlay ? cropMask : null) || crop || undefined;
 
   // Real explainability asset from the model's segmentation output.
   const binary = face.segmentation?.crop_binary ?? null;
@@ -37,9 +39,32 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
           </svg>
           Back to full image
         </button>
-        <span className="text-xs text-brand bg-[#EAF0FE] px-3 py-1 rounded-md font-medium">
-          Face {face.face_id} selected
-        </span>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Toggle the red mask overlay so the plain input crop can be viewed too */}
+          {cropMask && crop && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showOverlay}
+              onClick={() => setShowOverlay((v) => !v)}
+              className="flex items-center gap-2.5 border border-border bg-white rounded-full pl-3 pr-1.5 py-1 text-xs font-semibold text-navy hover:bg-[#F4F6FF] transition-colors"
+            >
+              Mask overlay
+              <span
+                className="relative inline-block w-8 h-[18px] rounded-full transition-colors"
+                style={{ backgroundColor: showOverlay ? "#3333FF" : "#D9D9D9" }}
+              >
+                <span
+                  className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-all"
+                  style={{ left: showOverlay ? "16px" : "2px" }}
+                />
+              </span>
+            </button>
+          )}
+          <span className="text-xs text-brand bg-[#EAF0FE] px-3 py-1 rounded-md font-medium">
+            Face {face.face_id} selected
+          </span>
+        </div>
       </div>
 
       {imgSrc && (
@@ -52,7 +77,7 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
 
       {/* Prediction banner */}
       <div
-        className="mt-4 rounded-xl p-4 sm:p-5 flex items-start gap-3 sm:gap-5 relative overflow-hidden border"
+        className="mt-4 rounded-xl px-4 py-3 sm:px-5 sm:py-3 flex items-center gap-3 sm:gap-5 relative overflow-hidden border"
         style={{
           backgroundColor: isFake ? "#FFE9E9" : "#E9F5F1",
           borderColor: isFake ? "#FFD0D0" : "#C4F0E3",
@@ -66,11 +91,11 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
 
         {/* Icon — aligned with the FAKE/REAL text row */}
         <div
-          className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ml-2 mt-6"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ml-2"
           style={{ backgroundColor: isFake ? "#FAD4D1" : "#C4F0E3" }}
         >
           {isFake ? (
-            <img src="/icons/fake-icon.svg" alt="" width={48} height={48} className="object-contain" />
+            <img src="/icons/fake-icon.svg" alt="" width={40} height={40} className="object-contain" />
           ) : (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2C8833" strokeWidth="2.5">
               <polyline points="20 6 9 17 4 12" />
@@ -80,27 +105,27 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
 
         {/* Prediction */}
         <div className="flex-1">
-          <p className="text-[11px] sm:text-sm text-muted uppercase tracking-wide min-h-6 flex items-center mb-1 sm:mb-0">
+          <p className="text-[11px] sm:text-xs text-muted uppercase tracking-wide">
             Face {face.face_id} — Model prediction
           </p>
-          <p className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight" style={{ color: "#142849" }}>
+          <p className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: "#142849" }}>
             {isFake ? "FAKE" : "REAL"}
           </p>
-          <p className="text-xs sm:text-sm text-muted mt-2 sm:mt-3">
+          <p className="text-xs text-muted mt-0.5">
             {isFake ? "Predicted manipulated" : "Predicted authentic"}
           </p>
         </div>
 
         {/* Score */}
         <div className="flex-[1.4] min-w-[260px]">
-          <div className="flex items-center gap-1.5 h-6">
-            <span className="text-sm sm:text-base text-muted">Model Score</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs sm:text-sm text-muted">Model Score</span>
             <img src="/icons/info-icon.svg" alt="info" width={16} height={16} className="object-contain opacity-70" />
           </div>
-          <p className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight" style={{ color: "#142849" }}>
+          <p className="text-2xl sm:text-3xl font-extrabold leading-tight" style={{ color: "#142849" }}>
             {score.toFixed(3)} <span className="text-sm sm:text-base font-normal text-muted">/ 1.000</span>
           </p>
-          <div className="h-4 bg-[#D9D9D9] rounded-full mt-3 overflow-hidden w-full">
+          <div className="h-2.5 bg-[#D9D9D9] rounded-full mt-2 overflow-hidden w-full">
             <div
               className="h-full rounded-full"
               style={{
@@ -142,7 +167,7 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
           <h3 className="text-base font-bold text-navy">Explainability</h3>
           <p className="text-xs text-muted mt-0.5">
             Segmentation mask for Face {face.face_id}
-            {coveragePct !== null ? ` · ${coveragePct}% of the face flagged` : ""}
+            {coveragePct !== null ? ` · ${coveragePct}% of the face crop flagged` : ""}
           </p>
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-[1fr_1.2fr] gap-4 items-start">
@@ -154,8 +179,9 @@ export function SelectedFaceView({ face, onBack, isBaseline = false }: SelectedF
             <div className="text-xs text-muted leading-relaxed">
               <p className="font-semibold text-navy mb-1">How to read this</p>
               <p>
-                White areas mark the pixels the model localized as manipulated. The larger and more
-                concentrated the region, the stronger the evidence of tampering in that part of the face.
+                White areas mark the pixels the model localized as manipulated (probability of at least
+                0.5). The mask shows where the model places the manipulation, not how strong the evidence
+                is. It was trained on generated masks, not hand-annotated boundaries.
               </p>
             </div>
           </div>

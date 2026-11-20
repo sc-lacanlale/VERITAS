@@ -88,13 +88,13 @@ export default function PreprocessingPage(): React.ReactElement {
           subtitle="600×600 binary localization targets"
         />
         <StatsCard
-          icon={<img src="/icons/settings-icon.svg" alt="" width={24} height={24} className="object-contain" />}
+          icon={<img src="/icons/navy-settings-icon.svg" alt="" width={24} height={24} className="object-contain" />}
           label="Output size"
           value="600×600"
           subtitle="Letterboxed RGB, ImageNet-normalized"
         />
         <StatsCard
-          icon={<img src="/icons/check-icon.svg" alt="" width={24} height={24} className="object-contain" />}
+          icon={<img src="/icons/navy-check-icon.svg" alt="" width={24} height={24} className="object-contain" />}
           label="Augmentation"
           value="Train only"
           subtitle="50% brightness/contrast · 50% flip"
