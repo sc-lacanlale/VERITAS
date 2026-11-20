@@ -1,3 +1,5 @@
+import { SampleGallery } from "@/components/dataset/SampleGallery";
+
 // ── Types ────────────────────────────────────────────────────────────────────
 interface DatasetSourceProps {
   name: string;
@@ -266,22 +268,14 @@ export default function DatasetPage(): React.ReactElement {
         </div>
       </div>
 
-      {/* Sample gallery placeholder */}
+      {/* Sample gallery */}
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Sample Gallery</h2>
         <p className="text-xs text-muted mb-4">
-          Representative examples from the OpenForensics dataset
+          Representative OpenForensics samples with generated localization masks
         </p>
 
-        <div className="bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-xl p-12 flex flex-col items-center justify-center text-center gap-3">
-          <div className="w-16 h-16 rounded-full bg-white border border-[#DADADA] flex items-center justify-center">
-            <img src="/icons/blue-dataset-icon.svg" alt="" width={32} height={32} className="object-contain" />
-          </div>
-          <p className="text-sm font-semibold text-navy">Sample visualization pending</p>
-          <p className="text-xs text-muted max-w-md">
-            Gallery view will display representative real and manipulated face samples from the training dataset.
-          </p>
-        </div>
+        <SampleGallery />
       </div>
 
     </div>
