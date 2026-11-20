@@ -84,7 +84,7 @@ export default function DatasetPage(): React.ReactElement {
           Dataset
         </h1>
         <p className="text-sm text-muted mt-1">
-          OpenForensics dataset used for training, validation, and testing
+          OpenForensics labels, generated masks, and the stored-crop pipeline used for training and evaluation
         </p>
       </div>
 
@@ -145,7 +145,7 @@ export default function DatasetPage(): React.ReactElement {
             </div>
             <div className="w-full border-t border-[#DADADA] pt-3 mt-1">
               <p className="text-xs text-navy font-semibold">20.7% of 190,335 face crops</p>
-              <p className="text-[11px] text-muted mt-0.5">Monitoring and checkpoint selection (Validation accuracy)</p>
+              <p className="text-[11px] text-muted mt-0.5">Checkpoint selection uses the best Validation accuracy</p>
             </div>
           </div>
           <div className="bg-[#E9F5F1] rounded-xl p-5 flex flex-col items-center text-center gap-3">
@@ -155,8 +155,8 @@ export default function DatasetPage(): React.ReactElement {
               <p className="text-xs font-semibold text-navy mt-1">Testing</p>
             </div>
             <div className="w-full border-t border-[#DADADA] pt-3 mt-1">
-              <p className="text-xs text-navy font-semibold">5.7% of 190,335 face crops</p>
-              <p className="text-[11px] text-muted mt-0.5">Final evaluation only</p>
+              <p className="text-xs text-navy font-semibold">Official OpenForensics Test split</p>
+              <p className="text-[11px] text-muted mt-0.5">Used for the matched four-model comparison</p>
             </div>
           </div>
         </div>
@@ -166,7 +166,7 @@ export default function DatasetPage(): React.ReactElement {
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Data Source</h2>
         <p className="text-xs text-muted mb-4">
-          A single dataset is used for every experiment
+          OpenForensics supplies the Real and Fake labels and generated masks for all four model variants
         </p>
 
         <div className="overflow-x-auto">
@@ -182,10 +182,10 @@ export default function DatasetPage(): React.ReactElement {
             <tbody>
               <DatasetSourceRow
                 name="OpenForensics"
-                description="Real and Fake folders supply the labels (Real = 0, Fake = 1)"
+                description="Official Train, Validation, and Test folders; Real = 0 and Fake = 1"
                 images="190,335"
                 faces="190,335"
-                manipulation="Face swapping, face reenactment, generative inpainting"
+                manipulation="Binary Real/Fake labels; no method-specific manipulation labels"
               />
             </tbody>
           </table>
@@ -215,7 +215,7 @@ export default function DatasetPage(): React.ReactElement {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-[#C05852] rounded-sm flex-shrink-0"></div>
-              <p className="text-xs text-navy">5,492 Fake (all with nonempty masks)</p>
+              <p className="text-xs text-navy">5,492 Fake</p>
             </div>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function DatasetPage(): React.ReactElement {
               </div>
               <div>
                 <p className="text-xs font-semibold text-navy">Letterbox & normalization</p>
-                <p className="text-[11px] text-muted">600×600 letterbox with ImageNet mean/std; a valid-canvas mask excludes padding</p>
+                <p className="text-[11px] text-muted">Stored crop letterboxed to 600×600 and ImageNet-normalized; the generated 600×600 mask is not letterboxed again. Letterbox padding is excluded by the valid-canvas mask.</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -259,7 +259,7 @@ export default function DatasetPage(): React.ReactElement {
               </div>
               <div>
                 <p className="text-xs font-semibold text-navy">Augmentation (Train only)</p>
-                <p className="text-[11px] text-muted">50% brightness/contrast, then 50% horizontal flip of the crop, mask, and valid-canvas mask</p>
+                <p className="text-[11px] text-muted">50% brightness/contrast on the RGB crop; 50% horizontal flip of RGB, mask, and valid-canvas mask together. Validation and Test are not augmented.</p>
               </div>
             </div>
           </div>
