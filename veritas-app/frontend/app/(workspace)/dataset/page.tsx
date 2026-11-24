@@ -266,20 +266,40 @@ export default function DatasetPage(): React.ReactElement {
         </div>
       </div>
 
-      {/* Sample gallery placeholder */}
+      {/* Sample gallery */}
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Sample Gallery</h2>
         <p className="text-xs text-muted mb-4">
-          Representative examples from the OpenForensics dataset
+          Representative OpenForensics Test face crops; Fake samples are shown with their generated masks (white = manipulated region)
         </p>
 
-        <div className="bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-xl p-12 flex flex-col items-center justify-center text-center gap-3">
-          <div className="w-16 h-16 rounded-full bg-white border border-[#DADADA] flex items-center justify-center">
-            <img src="/icons/blue-dataset-icon.svg" alt="" width={32} height={32} className="object-contain" />
-          </div>
-          <p className="text-sm font-semibold text-navy">Sample visualization pending</p>
-          <p className="text-xs text-muted max-w-md">
-            Gallery view will display representative real and manipulated face samples from the training dataset.
+        <p className="text-xs font-semibold text-navy mb-2">Real (label 0, all-zero target mask)</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          {["real_3398", "real_960", "real_3103", "real_1049"].map((name) => (
+            <div key={name} className="bg-[#EAF3FE] rounded-lg p-2">
+              <img src={`/gallery/${name}.jpg`} alt={name} className="w-full aspect-square object-cover rounded-md" />
+              <p className="text-[11px] text-navy font-semibold mt-1.5 text-center">{name}.jpg</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs font-semibold text-navy mb-2">Fake (label 1) with generated mask</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {["fake_4201", "fake_995", "fake_4580", "fake_1170"].map((name) => (
+            <div key={name} className="bg-[#FDECEC] rounded-lg p-2">
+              <div className="grid grid-cols-2 gap-1.5">
+                <img src={`/gallery/${name}.jpg`} alt={name} className="w-full aspect-square object-cover rounded-md" />
+                <img src={`/gallery/${name}_gtmask.png`} alt={`${name} generated mask`} className="w-full aspect-square object-cover rounded-md bg-black" />
+              </div>
+              <p className="text-[11px] text-navy font-semibold mt-1.5 text-center">{name}.jpg · face crop / generated mask</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 p-3 bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-lg">
+          <p className="text-xs text-muted">
+            <strong className="text-navy">Note:</strong> Face crops are shown as the model receives them (600×600 letterboxed,
+            trimmed to the face). Generated masks are the localization targets used for training and for Dice/mIoU evaluation.
           </p>
         </div>
       </div>

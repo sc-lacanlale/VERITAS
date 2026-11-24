@@ -281,7 +281,8 @@ export default function EvaluationPage(): React.ReactElement {
         <div className="mt-4 p-3 bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-lg">
           <p className="text-xs text-muted">
             <strong className="text-navy">Note:</strong> Per-image time is the batch-of-4 latency divided by 4. The latency
-            difference reflects mixed-precision FP16 (VERITAS) versus FP32 (Baseline) execution. At batch 1,
+            difference reflects different numerical precision (VERITAS mixed-precision FP16 versus Baseline FP32) alongside
+            the depthwise-separable decoder, rather than a same-precision speedup. At batch 1,
             VERITAS (Final) recorded 54.47 ms and 535 MB. It excludes preprocessing, so it is not the app's end-to-end time.
           </p>
         </div>
