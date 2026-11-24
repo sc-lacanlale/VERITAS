@@ -74,6 +74,15 @@ def load_veritas(checkpoint_path: Path, device_pref: str, multi_stream: bool, se
     ckpt_file = materialize_checkpoint(Path(checkpoint_path))
     print("Loading checkpoint:", ckpt_file)
     ckpt = _torch_load(ckpt_file)
+    if isinstance(ckpt, dict) and "model_state_dict" not in ckpt and any(k.startswith("fusion_head.") for k in ckpt):
+        from .architecture_v4 import VERITASV4
+        model = VERITASV4("veritas_v4_1", pretrained=False)
+        model.requires_valid_mask = True   # pass letterbox mask, same as training
+        model.load_state_dict(_strip_module(ckpt), strict=True)
+        model.to(device).eval()
+        _MODEL, _DEVICE, _STATUS = model, device, "ready"
+        print("VERITAS (Final, v4.1) loaded")
+        return _MODEL, _DEVICE
     if not isinstance(ckpt, dict) or "model_state_dict" not in ckpt:
         raise RuntimeError("Checkpoint does not contain model_state_dict")
     exp_cfg = ckpt.get("exp_cfg") or {}

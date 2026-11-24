@@ -97,7 +97,7 @@ export default function PreprocessingPage(): React.ReactElement {
           icon={<img src="/icons/navy-check-icon.svg" alt="" width={24} height={24} className="object-contain" />}
           label="Augmentation"
           value="Train only"
-          subtitle="50% brightness/contrast · 50% flip"
+          subtitle="Brightness/contrast · flip · forensic JPEG/blur/downscale (Final)"
         />
       </div>
 
@@ -155,7 +155,8 @@ export default function PreprocessingPage(): React.ReactElement {
             bg="bg-[#F1EFFD]"
             icon={<img src="/icons/yellow-file-icon.svg" alt="" width={22} height={22} className="object-contain" />}
             details={[
-              "50% chance: brightness/contrast on the RGB crop only",
+              "Brightness/contrast on the RGB crop only (Baseline 50%, VERITAS 45%)",
+              "VERITAS (Final) only: downscale (25%), Gaussian blur (20%), JPEG Q45–95 (45%)",
               "Then 50% chance: horizontal flip of crop, mask, and valid-canvas together",
               "Validation and Test images are not augmented"
             ]}
@@ -230,7 +231,7 @@ export default function PreprocessingPage(): React.ReactElement {
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">Data Augmentation Strategy</h2>
         <p className="text-xs text-muted mb-4">
-          Training-time transformations used by all four models
+          Training-time transformations of Baseline EfficientNetB7 and VERITAS (Final)
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,7 +263,14 @@ export default function PreprocessingPage(): React.ReactElement {
                 <div className="w-1.5 h-1.5 rounded-full bg-positive mt-1.5 flex-shrink-0"></div>
                 <div>
                   <p className="text-xs font-semibold text-navy">Brightness/contrast</p>
-                  <p className="text-[11px] text-muted">50% probability; gain ±15% and offset ±12 intensity levels, RGB crop only</p>
+                  <p className="text-[11px] text-muted">50% (Baseline) / 45% (VERITAS) probability; gain ±15% and offset ±12 intensity levels, RGB crop only</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-positive mt-1.5 flex-shrink-0"></div>
+                <div>
+                  <p className="text-xs font-semibold text-navy">Forensic degradations (VERITAS Final only)</p>
+                  <p className="text-[11px] text-muted">Downscale 0.65–0.95× (25%), Gaussian blur 3×3/5×5 (20%), JPEG Q45–95 (45%)</p>
                 </div>
               </div>
             </div>

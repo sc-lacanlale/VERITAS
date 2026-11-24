@@ -25,7 +25,7 @@ const OPTIONS: ModelOption[] = [
     key: "veritas",
     title: "VERITAS",
     subtitle: "Detects and localizes the manipulated region",
-    streams: ["RGB", "SRM", "FFT"],
+    streams: ["RGB", "SRM"],
     outputs: [
       { label: "Verdict", on: true },
       { label: "Score", on: true },

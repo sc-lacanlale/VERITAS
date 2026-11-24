@@ -259,7 +259,7 @@ export default function DatasetPage(): React.ReactElement {
               </div>
               <div>
                 <p className="text-xs font-semibold text-navy">Augmentation (Train only)</p>
-                <p className="text-[11px] text-muted">50% brightness/contrast, then 50% horizontal flip of the crop, mask, and valid-canvas mask</p>
+                <p className="text-[11px] text-muted">Brightness/contrast and synchronized horizontal flip of the crop, mask, and valid-canvas mask; VERITAS (Final) adds forensic downscale, Gaussian blur, and JPEG (Q45–95) augmentation</p>
               </div>
             </div>
           </div>

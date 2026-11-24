@@ -15,6 +15,7 @@ def _default_checkpoint() -> Path:
     models = REPO_ROOT / "models"
     for candidate in (
         # OW_04 output (OpenForensics Wild + generated masks) — the final Full model.
+        models / "veritas_v4_1_140k_best.pt",
         models / "full_veritas_ow_best.zip",
         models / "full_veritas_ow_best.pt",
         *sorted(models.glob("full_veritas_ow_best*.zip"), key=lambda p: p.stat().st_mtime, reverse=True),

@@ -71,7 +71,7 @@ export function TrainedModelsCard(): React.ReactElement {
             </div>
             <StatusPill {...veritas} />
           </div>
-          <p className="text-[11px] text-muted leading-snug">RGB EfficientNet-B7 + SRM/FFT late fusion + DeepLabV3+ · score and localization mask</p>
+          <p className="text-[11px] text-muted leading-snug">RGB EfficientNet-B7 + color SRM forensic expert (bounded dual-expert fusion) + multi-scale segmentation head · score and localization mask</p>
         </div>
 
         {/* Baseline */}

@@ -87,7 +87,7 @@ export function AnalysisResults({
             <span className={`w-2 h-2 rounded-full ${isBaseline ? "bg-navy" : "bg-brand"}`} />
             {modelName}
           </span>
-          {(isBaseline ? ["RGB"] : ["RGB", "SRM", "FFT"]).map((s) => (
+          {(isBaseline ? ["RGB"] : ["RGB", "SRM"]).map((s) => (
             <span key={s} className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-[#C9D3FB] text-navy bg-white">
               {s}
             </span>

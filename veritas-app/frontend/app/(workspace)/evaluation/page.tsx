@@ -73,7 +73,7 @@ export default function EvaluationPage(): React.ReactElement {
           Evaluation
         </h1>
         <p className="text-sm text-muted mt-1">
-          Test results of the two deployed models on the OpenForensics Test set (n = 10,905)
+          Test results of the two deployed models, Baseline EfficientNetB7 and VERITAS (Final), on the OpenForensics Test set (n = 10,905)
         </p>
       </div>
 
@@ -82,22 +82,22 @@ export default function EvaluationPage(): React.ReactElement {
         <MetricCard
           bg="bg-[#EAF3FE] border border-[#DADADA]"
           label="VERITAS Accuracy"
-          value="87.55%"
+          value="89.56%"
         />
         <MetricCard
           bg="bg-white border border-border"
           label="VERITAS Precision"
-          value="0.816"
+          value="0.846"
         />
         <MetricCard
           bg="bg-white border border-border"
           label="VERITAS Recall"
-          value="0.972"
+          value="0.969"
         />
         <MetricCard
           bg="bg-white border border-border"
           label="VERITAS F1-Score"
-          value="0.887"
+          value="0.903"
         />
       </div>
 
@@ -133,11 +133,11 @@ export default function EvaluationPage(): React.ReactElement {
                 f1="0.880"
               />
               <SopResultRow
-                model="VERITAS"
-                accuracy="87.55%"
-                precision="0.816"
-                recall="0.972"
-                f1="0.887"
+                model="VERITAS (Final)"
+                accuracy="89.56%"
+                precision="0.846"
+                recall="0.969"
+                f1="0.903"
                 highlight={true}
               />
             </tbody>
@@ -170,11 +170,11 @@ export default function EvaluationPage(): React.ReactElement {
                 <td className="py-3 px-4 text-xs text-navy text-center">152</td>
               </tr>
               <tr className="border-b border-border last:border-0 bg-[#EAF3FE] border-l-4 border-brand font-semibold">
-                <td className="py-3 px-4 text-xs text-navy">VERITAS</td>
-                <td className="py-3 px-4 text-xs text-navy text-center">5,336</td>
-                <td className="py-3 px-4 text-xs text-navy text-center">4,211</td>
-                <td className="py-3 px-4 text-xs text-navy text-center">1,202</td>
-                <td className="py-3 px-4 text-xs text-navy text-center">156</td>
+                <td className="py-3 px-4 text-xs text-navy">VERITAS (Final)</td>
+                <td className="py-3 px-4 text-xs text-navy text-center">5,321</td>
+                <td className="py-3 px-4 text-xs text-navy text-center">4,446</td>
+                <td className="py-3 px-4 text-xs text-navy text-center">967</td>
+                <td className="py-3 px-4 text-xs text-navy text-center">171</td>
               </tr>
             </tbody>
           </table>
@@ -183,8 +183,8 @@ export default function EvaluationPage(): React.ReactElement {
 
         <div className="mt-4 p-3 bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-lg">
           <p className="text-xs text-muted">
-            <strong className="text-navy">Note:</strong> VERITAS is 0.86 percentage points more accurate than
-            Baseline EfficientNetB7 on the same 10,905 Test images (5,413 Real, 5,492 Fake). Fake is the positive class.
+            <strong className="text-navy">Note:</strong> VERITAS (Final) is 2.87 percentage points more accurate than
+            Baseline EfficientNetB7 on the same 10,905 Test images (5,413 Real, 5,492 Fake), ROC-AUC 0.9733. Fake is the positive class.
           </p>
         </div>
       </div>
@@ -199,22 +199,22 @@ export default function EvaluationPage(): React.ReactElement {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <SegmentationMetric
             metric="Mean Dice (Fake)"
-            value="0.923"
-            description="Agreement with generated masks on 5,492 Fake Test images"
+            value="0.9464"
+            description="Agreement with generated masks on 5,492 Fake Test images (median 0.9763)"
           />
           <SegmentationMetric
             metric="Mean mIoU (Fake)"
-            value="0.901"
-            description="Intersection over union on the same 5,492 Fake Test images"
+            value="0.9225"
+            description="Intersection over union on the same 5,492 Fake Test images (median 0.9537)"
           />
           <SegmentationMetric
             metric="Real: positive-pixel fraction"
-            value="9.47%"
+            value="9.63%"
             description="Average share of a Real face's pixels predicted as manipulated"
           />
           <SegmentationMetric
             metric="Real: nonempty-mask rate"
-            value="23.76%"
+            value="21.76%"
             description="Share of Real Test images with any predicted positive pixel"
           />
         </div>
@@ -231,7 +231,7 @@ export default function EvaluationPage(): React.ReactElement {
       <div className="bg-white border border-border rounded-xl p-6">
         <h2 className="text-base font-bold text-navy mb-1">SOP 3: Computational Trade-offs</h2>
         <p className="text-xs text-muted mb-4">
-          Descriptive model-only benchmark on a Kaggle Tesla T4 (batch size 4, float32)
+          Descriptive model-only benchmark on a Kaggle Tesla T4 (batch size 4; Baseline FP32, VERITAS (Final) mixed precision FP16)
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -243,15 +243,15 @@ export default function EvaluationPage(): React.ReactElement {
             <div className="space-y-2">
               <div className="flex justify-between items-center gap-3">
                 <p className="text-xs text-muted">Baseline EfficientNetB7</p>
-                <p className="text-xs font-semibold text-navy text-right">63.86 ms</p>
+                <p className="text-xs font-semibold text-navy text-right">63.29 ms</p>
               </div>
               <div className="flex justify-between items-center gap-3">
                 <p className="text-xs text-muted">VERITAS</p>
-                <p className="text-xs font-semibold text-navy text-right">82.22 ms</p>
+                <p className="text-xs font-semibold text-navy text-right">42.73 ms</p>
               </div>
               <div className="flex justify-between items-center gap-3">
                 <p className="text-xs text-muted">Difference</p>
-                <p className="text-xs font-semibold text-navy text-right">+18.36 ms</p>
+                <p className="text-xs font-semibold text-navy text-right">−20.56 ms</p>
               </div>
             </div>
           </div>
@@ -268,11 +268,11 @@ export default function EvaluationPage(): React.ReactElement {
               </div>
               <div className="flex justify-between items-center gap-3">
                 <p className="text-xs text-muted">VERITAS</p>
-                <p className="text-xs font-semibold text-navy text-right">919 MB</p>
+                <p className="text-xs font-semibold text-navy text-right">936 MB</p>
               </div>
               <div className="flex justify-between items-center gap-3">
                 <p className="text-xs text-muted">Difference</p>
-                <p className="text-xs font-semibold text-navy text-right">+60 MB</p>
+                <p className="text-xs font-semibold text-navy text-right">+77 MB</p>
               </div>
             </div>
           </div>
@@ -280,8 +280,9 @@ export default function EvaluationPage(): React.ReactElement {
 
         <div className="mt-4 p-3 bg-[#F9FAFD] border border-dashed border-[#DADADA] rounded-lg">
           <p className="text-xs text-muted">
-            <strong className="text-navy">Note:</strong> Per-image time is the batch-of-4 latency divided by 4
-            (1 warmup batch, 3 timed repeats). It excludes preprocessing, so it is not the app's end-to-end time.
+            <strong className="text-navy">Note:</strong> Per-image time is the batch-of-4 latency divided by 4. The latency
+            difference reflects mixed-precision FP16 (VERITAS) versus FP32 (Baseline) execution. At batch 1,
+            VERITAS (Final) recorded 54.47 ms and 535 MB. It excludes preprocessing, so it is not the app's end-to-end time.
           </p>
         </div>
       </div>
