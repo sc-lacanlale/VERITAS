@@ -269,7 +269,7 @@ export default function OverviewPage(): React.ReactElement {
             />
             <SopCard
               id="SOP 1.4"
-              label="Baseline comparison"
+              label="Benchmark comparison (Eilia et al., 84.4%)"
               icon={<img src="/icons/sop1.4-icon.svg" alt="" width={22} height={22} className="object-contain" />}
             />
             <SopCard
