@@ -65,7 +65,7 @@ MODEL_CONFIG = {
     "emit_masks": _KIND != "wild",
     "checkpoint_kind": _KIND,
     "backbone": "efficientnet_b7",
-    "max_upload_bytes": int(os.environ.get("MAX_UPLOAD_BYTES", 20 * 1024 * 1024)),
+    "max_upload_bytes": int(os.environ.get("MAX_UPLOAD_BYTES", 10 * 1024 * 1024)),
     "allowed_suffixes": {".jpg", ".jpeg", ".png", ".webp"},
     "allowed_mimes": {"image/jpeg", "image/png", "image/webp"},
 }
